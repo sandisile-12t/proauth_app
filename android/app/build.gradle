@@ -1,0 +1,66 @@
+
+import org.gradle.api.GradleException
+import java.util.Properties
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
+def flutterSdkPath = localProperties.getProperty('flutter.sdk')
+if (flutterSdkPath == null) {
+    throw new GradleException(
+            "flutter.sdk not found in local.properties. " +
+                    "Please ensure you have a line like:\n\n" +
+                    "  flutter.sdk=C:/Users/SandisileTshabalalaA/flutter_sdk/flutter"
+    )
+}
+
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+// Apply the Flutter plugin to wire up v2 embedding
+apply from: "$flutterSdkPath/packages/flutter_tools/gradle/flutter.gradle"
+
+android {
+    namespace 'com.example.proauth'
+    compileSdkVersion 34
+
+    defaultConfig {
+        applicationId "com.example.proauth"
+        minSdkVersion 23
+        targetSdkVersion 34
+
+        versionCode Integer.parseInt(localProperties.getProperty('flutter.versionCode') ?: '1')
+        versionName localProperties.getProperty('flutter.versionName') ?: '1.0'
+
+        manifestPlaceholders = [ flutterEmbedding: "2" ]
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10"
+    implementation "com.example:library:1.0.0"
+}
+
+
+
+
