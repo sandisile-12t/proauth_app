@@ -55,11 +55,11 @@ class ViewTenderScreen extends StatelessWidget {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Bid ID: ${tender.bidId}",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                      const SizedBox(height: 8),
+                      //Text(
+                        //"Bid ID: ${tender.bidId}",
+                        //style: const TextStyle(color: Colors.grey),
+                     // ),
+                     // const SizedBox(height: 8),
                       Text(
                         "Closing Date: ${tender.closingDate}",
                         style: const TextStyle(color: Colors.grey),

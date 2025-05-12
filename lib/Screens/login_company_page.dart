@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../Providers/company_provider.dart';
 import 'package:proauth/Models/Company_user.dart';
-import 'package:proauth/Screens/company_profile_page.dart';
+import 'company_dashboard_page.dart';
 
 class LoginCompanyPage extends StatefulWidget {
   const LoginCompanyPage({super.key});
@@ -138,7 +138,11 @@ class _LoginCompanyPageState extends State<LoginCompanyPage> {
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => CompanyProfilePage(company: company),
+                        builder: (context) => CompanyDashboardPage(
+                          companyId: company.id,
+                          registrationNumber: company.registrationNumber,
+                        ),
+
                       ),
                     );
                   } else {

@@ -4,7 +4,6 @@ import 'package:proauth/Screens/company_dashboard_page.dart';
 import 'package:provider/provider.dart';
 import 'package:proauth/Providers/company_provider.dart';
 
-// Define the custom navy color globally
 const customNavy = Color(0xFF003366);
 
 class CompanyProfilePage extends StatefulWidget {
@@ -221,50 +220,8 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
             ),
 
             const Spacer(),
-
-            // Go to Dashboard Button
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: customNavy,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () {
-                if (_editableCompany.id.isNotEmpty &&
-                    _editableCompany.registrationNumber.isNotEmpty) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CompanyDashboardPage(
-                        companyId: _editableCompany.id,
-                        registrationNumber: _editableCompany.registrationNumber,
-                      ),
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Error: Company ID or Registration Number is missing.'),
-                    ),
-                  );
-                }
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.dashboard, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text(
-                    'Go to Dashboard',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+       ]
+        )
       ),
     );
   }

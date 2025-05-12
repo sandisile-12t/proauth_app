@@ -57,7 +57,7 @@ class RoleSelectionScreen extends StatelessWidget {
                     Navigator.pushNamed(context, '/login/individual');
                   },
                   icon: const Icon(Icons.person),
-                  label: const Text('Sign in as Individual'),
+                  label: const Text('Sign Up as Individual'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellowAccent,
                     foregroundColor: navy,
@@ -76,7 +76,7 @@ class RoleSelectionScreen extends StatelessWidget {
                     Navigator.pushNamed(context, '/login/company');
                   },
                   icon: const Icon(Icons.business_center),
-                  label: const Text('Sign in on behalf of Organization'),
+                  label: const Text('Sign Up on behalf of Organization'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellowAccent,
                     foregroundColor: navy,
@@ -95,7 +95,7 @@ class RoleSelectionScreen extends StatelessWidget {
                     Navigator.pushNamed(context, '/login/organ');
                   },
                   icon: const Icon(Icons.gavel),
-                  label: const Text('Sign in as Organ of State'),
+                  label: const Text('Sign Up as Organ of State'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellowAccent,
                     foregroundColor: navy,

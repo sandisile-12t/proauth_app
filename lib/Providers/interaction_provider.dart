@@ -110,6 +110,7 @@ class InteractionProvider with ChangeNotifier {
 
       String bidDescription = original.bidDescription;
       if (bidDescription == 'N/A' && original.bidId.isNotEmpty) {
+        // Fetching bid description from 'tenders' collection
         final bidSnap = await FirebaseFirestore.instance
             .collection('tenders')
             .doc(original.bidId)

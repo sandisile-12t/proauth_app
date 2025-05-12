@@ -26,6 +26,8 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
 
   String? selectedStatus;
   DateTime? selectedDate;
+  TextEditingController searchController = TextEditingController();
+  String searchTerm = '';
 
   @override
   void initState() {
@@ -36,7 +38,6 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
   Future<void> _fetchHistory() async {
     setState(() => isLoading = true);
 
-    // Debug: log incoming arguments
     print('🔍 Fetch history for userId=${widget.userId}, role=${widget.role}');
 
     try {
@@ -46,12 +47,20 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
       final uid = widget.userId;
       final roleKey = widget.role.toLowerCase();
 
-      if (roleKey == 'organ') {
-        final tenderSnap = await FirebaseFirestore.instance
-            .collection('tenders')
-            .where('postedBy', isEqualTo: uid)
-            .get();
+      final tenderSnap = await FirebaseFirestore.instance
+          .collection('tenders')
+          .where('postedBy', isEqualTo: uid)
+          .get();
 
+      final tenderInfoMap = {
+        for (var doc in tenderSnap.docs)
+          doc.id: {
+            'bidNumber': doc.data()['bidNumber'],
+            'closingDate': doc.data()['closingDate'],
+          }
+      };
+
+      if (roleKey == 'organ') {
         final tenderIds = tenderSnap.docs.map((e) => e.id).toList();
         if (tenderIds.isEmpty) {
           setState(() {
@@ -62,7 +71,6 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
           return;
         }
 
-        // Firestore 'in' supports max 10 items—batch into chunks
         final chunks = <List<String>>[];
         for (var i = 0; i < tenderIds.length; i += 10) {
           chunks.add(
@@ -89,7 +97,6 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
             .get();
         requestDocs = requestSnap.docs;
       } else if (roleKey == 'personnel' || roleKey == 'user') {
-        // Treat 'user' same as 'personnel'
         final requestSnap = await FirebaseFirestore.instance
             .collection('requests')
             .where('toUserId', isEqualTo: uid)
@@ -100,6 +107,33 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
       } else {
         requestDocs = [];
         print('⚠️ Unknown role "${widget.role}", no documents fetched.');
+      }
+
+      // 🆕 Collect all bidIds from requests
+      final allBidIds = requestDocs.map((doc) => doc.data()['bidId']).whereType<String>().toSet().toList();
+
+      if (allBidIds.isNotEmpty) {
+        final bidChunks = <List<String>>[];
+        for (var i = 0; i < allBidIds.length; i += 10) {
+          bidChunks.add(allBidIds.sublist(
+            i,
+            i + 10 > allBidIds.length ? allBidIds.length : i + 10,
+          ));
+        }
+
+        for (var chunk in bidChunks) {
+          final tenderSnap = await FirebaseFirestore.instance
+              .collection('tenders')
+              .where(FieldPath.documentId, whereIn: chunk)
+              .get();
+
+          for (var doc in tenderSnap.docs) {
+            tenderInfoMap[doc.id] = {
+              'bidNumber': doc.data()['bidNumber'],
+              'closingDate': doc.data()['closingDate'],
+            };
+          }
+        }
       }
 
       for (var doc in requestDocs) {
@@ -114,6 +148,8 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
           responderName = companySnap.data()?['companyName'] ?? 'Unknown';
         }
 
+        final tenderInfo = tenderInfoMap[data['bidId']];
+
         if (roleKey == 'organ') {
           enriched.add(EnrichedRequest(
             id: doc.id,
@@ -122,6 +158,8 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
               'responderName': responderName,
               'personnelName': data['personnelName'] ?? 'Unknown',
               'qualification': data['qualification'] ?? 'Unknown',
+              'bidNumber': tenderInfo?['bidNumber'] ?? 'No bid number',
+              'closingDate': tenderInfo?['closingDate'] ?? 'No closing date',
             },
           ));
         } else if (roleKey == 'personnel' || roleKey == 'user') {
@@ -143,10 +181,21 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
               'personnelName': data['personnelName'] ?? 'Unknown',
               'qualification': data['qualification'] ?? 'Unknown',
               'bidDescription': data['bidDescription'] ?? 'No description',
+              'bidNumber': tenderInfo?['bidNumber'] ?? 'No bid number',
+              'closingDate': tenderInfo?['closingDate'] ?? 'No closing date',
             },
           ));
         } else if (roleKey == 'company') {
-          enriched.add(EnrichedRequest(id: doc.id, data: data));
+          enriched.add(EnrichedRequest(
+            id: doc.id,
+            data: {
+              ...data,
+              'personnelName': data['personnelName'] ?? 'Unknown',
+              'qualification': data['qualification'] ?? 'Unknown',
+              'bidNumber': tenderInfo?['bidNumber'] ?? 'No bid number',
+              'closingDate': tenderInfo?['closingDate'] ?? 'No closing date',
+            },
+          ));
         }
       }
 
@@ -171,12 +220,14 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
         final data = req.data;
         final status = data['status']?.toString().toLowerCase();
         final timestamp = data['timestamp'];
+        final companyName = data['responderName']?.toString().toLowerCase();
 
         final statusMatch = selectedStatus == null || status == selectedStatus!.toLowerCase();
         final dateMatch = selectedDate == null ||
             (timestamp is Timestamp && _isSameDay(timestamp.toDate(), selectedDate!));
+        final searchMatch = searchTerm.isEmpty || (companyName?.contains(searchTerm) ?? false);
 
-        return statusMatch && dateMatch;
+        return statusMatch && dateMatch && searchMatch;
       }).toList();
     });
   }
@@ -188,6 +239,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
     setState(() {
       selectedStatus = null;
       selectedDate = null;
+      searchTerm = '';
       filteredRequests = List.from(allRequests);
     });
   }
@@ -208,6 +260,8 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final roleKey = widget.role.toLowerCase();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Interaction History'),
@@ -251,6 +305,21 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
                   onPressed: _clearFilters,
                   child: const Text('Clear Filters'),
                 ),
+                if (roleKey != 'company')
+                  SizedBox(
+                    width: 200,
+                    child: TextField(
+                      controller: searchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Search by company',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() => searchTerm = value.trim().toLowerCase());
+                        _applyFilters();
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
@@ -263,6 +332,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
               itemCount: filteredRequests.length,
               itemBuilder: (context, index) {
                 final data = filteredRequests[index].data;
+
                 return Card(
                   margin: const EdgeInsets.all(12),
                   elevation: 4,
@@ -272,13 +342,20 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildDetail('Bid Number', data['bidNumber']),
-                        if (widget.role.toLowerCase() != 'company')
+                        _buildDetail(
+                          'Closing Date',
+                          data['closingDate'] is Timestamp
+                              ? _formatDate((data['closingDate'] as Timestamp).toDate())
+                              : data['closingDate'],
+                        ),
+                        if (roleKey == 'organ' || roleKey == 'personnel')
                           _buildDetail('Company Requested Access', data['responderName']),
-                        if (widget.role.toLowerCase() != 'personnel')
+                        if (roleKey == 'organ' || roleKey == 'company')
                           _buildDetail('Personnel Name', data['personnelName']),
-                        if (widget.role.toLowerCase() != 'personnel')
+                        if (roleKey == 'organ' || roleKey == 'company')
                           _buildDetail('Qualification', data['qualification']),
-                        _buildDetail('Request Details', data['bidDescription']),
+                        if (roleKey == 'organ')
+                          _buildDetail('Request Details', data['bidDescription']),
                         _buildDetail('Status', data['status']),
                         _buildDetail(
                           'Response Date',
@@ -301,8 +378,9 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
   Future<void> _exportApprovedRequestsAsPDF() async {
     final pdfDoc = pw.Document();
 
-    final approved = filteredRequests.where((req) =>
-    req.data['status']?.toString().toLowerCase() == 'approved').toList();
+    final approved = filteredRequests
+        .where((req) => req.data['status']?.toString().toLowerCase() == 'approved')
+        .toList();
 
     if (approved.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -311,25 +389,54 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
       return;
     }
 
+    final Map<String, List<EnrichedRequest>> grouped = {};
+    for (var req in approved) {
+      final data = req.data;
+      final companyId = data['companyId'];
+      final bidId = data['bidId'];
+      final key = '$companyId|$bidId';
+
+      if (!grouped.containsKey(key)) {
+        grouped[key] = [];
+      }
+      grouped[key]!.add(req);
+    }
+
     pdfDoc.addPage(
       pw.MultiPage(
         build: (_) => [
-          pw.Text('Approved Requests Report',
+          pw.Text('Grouped Approved Requests Report',
               style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 20),
-          ...approved.map((req) {
-            final data = req.data;
+          ...grouped.entries.map((entry) {
+            final group = entry.value;
+            final first = group.first.data;
+
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Bid Number: ${data['bidNumber'] ?? 'N/A'}'),
-                pw.Text('Responded By: ${data['responderName'] ?? 'N/A'}'),
-                pw.Text('Personnel Name: ${data['personnelName'] ?? 'N/A'}'),
-                pw.Text('Qualification: ${data['qualification'] ?? 'N/A'}'),
-                pw.Text('Bid Description: ${data['bidDescription'] ?? 'N/A'}'),
-                pw.Text('Status: ${data['status']}'),
-                pw.Text('Response Date: ${data['timestamp'] is Timestamp ? _formatDate((data['timestamp'] as Timestamp).toDate()) : 'N/A'}'),
+                pw.Text('Bid Number: ${first['bidNumber'] ?? 'N/A'}'),
+                pw.Text('Company: ${first['responderName'] ?? 'N/A'}'),
+                pw.Text('Closing Date: ${first['closingDate'] is Timestamp ? _formatDate((first['closingDate'] as Timestamp).toDate()) : 'N/A'}'),
+                pw.SizedBox(height: 8),
+                pw.Text('Personnel List:', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                ...group.map((req) {
+                  final d = req.data;
+                  return pw.Bullet(
+                    text: '${d['personnelName'] ?? 'N/A'} — ${d['qualification'] ?? 'N/A'}',
+                  );
+                }),
+                pw.SizedBox(height: 8),
+                pw.Text('Status: Approved'),
+                pw.Text('Response Dates:'),
+                ...group.map((req) {
+                  final ts = req.data['timestamp'];
+                  return pw.Bullet(
+                    text: ts is Timestamp ? _formatDate(ts.toDate()) : 'N/A',
+                  );
+                }),
                 pw.Divider(),
+                pw.SizedBox(height: 10),
               ],
             );
           }).toList(),
@@ -340,6 +447,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
     await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdfDoc.save());
   }
 
+
   Widget _buildDetail(String title, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -348,8 +456,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
         children: [
           Expanded(
             flex: 3,
-            child: Text('$title:',
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('$title:', style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           Expanded(
             flex: 5,
@@ -372,6 +479,9 @@ class EnrichedRequest {
 
   EnrichedRequest({required this.id, required this.data});
 }
+
+
+
 
 
 

@@ -215,7 +215,11 @@ class MyApp extends StatelessWidget {
 
       '/tenderHistory': (_) => const TenderHistoryScreen(),
       '/postTender': (_) => const PostTenderScreen(),
-      '/notifications': (_) => const NotificationScreen(),
+      '/notifications': (context) {
+        final String userId = FirebaseAuth.instance.currentUser?.uid ?? ''; // Get userId dynamically
+        return NotificationScreen(userId: userId);  // Pass userId to NotificationScreen
+      },
+
       '/forgot_password': (_) => ForgotPasswordPage(),
       '/viewTenders': (context) {
         final args = ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
