@@ -80,12 +80,13 @@ class _DashboardOrganOfStateState extends State<DashboardOrganOfState> {
       appBar: AppBar(
         title: const Text(
           "Organ Dashboard",
-          style: TextStyle(color: Colors.white), // Ensures title is white
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.black87,
+        iconTheme: const IconThemeData(color: Colors.white), // <-- Hamburger menu icon in white
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_circle, color: Colors.white), // White icon for visibility
+            icon: const Icon(Icons.account_circle, color: Colors.white),
             onPressed: () {
               Navigator.pushNamed(
                 context,
