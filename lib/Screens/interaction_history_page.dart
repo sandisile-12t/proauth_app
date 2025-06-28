@@ -28,6 +28,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
   DateTime? selectedDate;
   TextEditingController searchController = TextEditingController();
   String searchTerm = '';
+  String tenderSearch = '';
 
   @override
   void initState() {
@@ -221,13 +222,15 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
         final status = data['status']?.toString().toLowerCase();
         final timestamp = data['timestamp'];
         final companyName = data['responderName']?.toString().toLowerCase();
+        final bidNumber = data['bidNumber']?.toString().toLowerCase();
 
         final statusMatch = selectedStatus == null || status == selectedStatus!.toLowerCase();
         final dateMatch = selectedDate == null ||
             (timestamp is Timestamp && _isSameDay(timestamp.toDate(), selectedDate!));
         final searchMatch = searchTerm.isEmpty || (companyName?.contains(searchTerm) ?? false);
+        final tenderMatch = tenderSearch.isEmpty || (bidNumber?.contains(tenderSearch) ?? false);
 
-        return statusMatch && dateMatch && searchMatch;
+        return statusMatch && dateMatch && searchMatch && tenderMatch;
       }).toList();
     });
   }
@@ -305,7 +308,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
                   onPressed: _clearFilters,
                   child: const Text('Clear Filters'),
                 ),
-                if (roleKey != 'company')
+                if (roleKey != 'company') ...[
                   SizedBox(
                     width: 200,
                     child: TextField(
@@ -320,6 +323,20 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
                       },
                     ),
                   ),
+                  SizedBox(
+                    width: 200,
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Search by tender number',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() => tenderSearch = value.trim().toLowerCase());
+                        _applyFilters();
+                      },
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -374,6 +391,7 @@ class _InteractionHistoryScreenState extends State<InteractionHistoryScreen> {
       ),
     );
   }
+
 
   Future<void> _exportApprovedRequestsAsPDF() async {
     final pdfDoc = pw.Document();
