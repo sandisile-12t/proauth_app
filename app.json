@@ -1,4 +1,26 @@
 {
-  "name": "ProAuth",
-  "displayName": "ProAuth"
+  "expo": {
+    "name": "ProAuth",
+    "slug": "proauth",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.proauth.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.proauth.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
 }
