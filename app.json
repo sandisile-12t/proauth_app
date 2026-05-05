@@ -3,8 +3,8 @@
     "name": "ProAuth",
     "slug": "proauth",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "backgroundColor": "#ffffff"
@@ -20,7 +20,6 @@
       "package": "com.proauth.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
     }
   }
 }
