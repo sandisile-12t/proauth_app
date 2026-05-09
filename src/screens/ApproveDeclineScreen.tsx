@@ -1,14 +1,11 @@
 import React, {useState} from 'react';
 import {View, Text, StyleSheet, Alert} from 'react-native';
-import {NativeStackScreenProp} from '@react-navigation/native-stack';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RouteProp} from '@react-navigation/native';
 import {RootStackParamList} from '../navigation/AppNavigator';
 import CustomButton from '../components/CustomButton';
 
-type Props = {
-  route: RouteProp<RootStackParamList, 'ApproveDecline'>;
-  navigation: NativeStackScreenProp<RootStackParamList, 'ApproveDecline'>;
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'ApproveDecline'>;
 
 const ApproveDeclineScreen: React.FC<Props> = ({route}) => {
   const {companyName, bidNumber, bidDescription} = route.params || {};

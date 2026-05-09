@@ -4,7 +4,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../navigation/AppNavigator';
 
 type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Example'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
 };
 
 const ExampleScreen: React.FC<Props> = ({navigation}) => {

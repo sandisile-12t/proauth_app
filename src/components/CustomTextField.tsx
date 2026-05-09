@@ -22,7 +22,11 @@ const CustomTextField: React.FC<CustomTextFieldProps> = ({
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
-        style={[styles.input, error && styles.inputError, style]}
+        style={[
+          styles.input,
+          error ? styles.inputError : undefined,
+          style,
+        ].filter(Boolean)}
         placeholderTextColor="#999"
         {...props}
       />
