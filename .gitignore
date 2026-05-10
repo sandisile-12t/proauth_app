@@ -1,6 +1,5 @@
-node_modules/
-dist/
-.expo/
+
+ dist/
 .expo-shared/
 *.local
 .DS_Store
