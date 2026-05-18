@@ -4,8 +4,9 @@ import { colors } from '../theme/theme';
 import { collection, query, where, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
+import ScreenHeader from '../components/ScreenHeader';
 
-export default function InteractionHistoryScreen() {
+export default function InteractionHistoryScreen({ navigation }) {
   const auth = getAuth();
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +161,7 @@ export default function InteractionHistoryScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Interaction History" navigation={navigation} />
       <Text style={styles.title}>Interaction History</Text>
       {decisions.length === 0 ? (
         <View style={styles.emptyContainer}>

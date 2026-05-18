@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function OrganDashboardScreen({ navigation }) {
   // Example: hardcoded tenderId for now. Replace with actual tender.id from Firestore.
@@ -15,7 +16,7 @@ export default function OrganDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Organ of State Dashboard</Text>
+      <ScreenHeader title="Organ of State" navigation={navigation} showBack={false} />
       <View style={styles.card}>
         {menuItems.map((item, index) => (
           <TouchableOpacity

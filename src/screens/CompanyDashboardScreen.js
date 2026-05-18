@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 import { getAuth } from 'firebase/auth';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function CompanyDashboardScreen({ navigation }) {
   const auth = getAuth();
@@ -15,7 +16,7 @@ export default function CompanyDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Company Dashboard</Text>
+      <ScreenHeader title="Company Dashboard" navigation={navigation} showBack={false} />
 
       <DashboardButton
         title="Profile"

@@ -15,9 +15,10 @@ import { db } from '../services/firebase';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import * as DocumentPicker from 'expo-document-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import ScreenHeader from '../components/ScreenHeader';
 
 
-export default function IndividualProfileScreen() {
+export default function IndividualProfileScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -158,6 +159,7 @@ const handleUpload = async (type) => {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="My Profile" navigation={navigation} />
       {/* Header row with icons */}
       <View style={styles.headerRow}>
         <Text style={styles.title}>My Profile</Text>

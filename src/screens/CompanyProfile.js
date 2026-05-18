@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from '../theme/theme';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import ScreenHeader from '../components/ScreenHeader';
 
-export default function CompanyProfile({ route }) {
+export default function CompanyProfile({ route, navigation }) {
   // Expecting companyId (doc ID) passed via navigation
   
   const { companyId } = route.params || {};
@@ -51,6 +52,7 @@ if (!companyId) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Company Profile" navigation={navigation} />
       <Text style={styles.title}>{company.companyId}</Text>
       <Text style={styles.detail}>Registration No: {company.companyReg}</Text>
       <Text style={styles.detail}>Email: {company.email}</Text>

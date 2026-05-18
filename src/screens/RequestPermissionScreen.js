@@ -4,6 +4,7 @@ import { colors } from '../theme/theme';
 import { collection, query, where, onSnapshot, addDoc, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function RequestPermissionScreen({ route, navigation }) {
   const { tender } = route.params;
@@ -89,6 +90,7 @@ export default function RequestPermissionScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Request Permission" navigation={navigation} />
       <Text style={styles.title}>Request Permission</Text>
       <TextInput
         style={styles.searchBox}

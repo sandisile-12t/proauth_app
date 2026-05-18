@@ -3,6 +3,7 @@ import { View, Text, FlatList, TextInput, StyleSheet, TouchableOpacity } from 'r
 import { colors } from '../theme/theme';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function PostTenderHistoryScreen({ navigation }) {
   const [search, setSearch] = useState('');
@@ -29,6 +30,7 @@ export default function PostTenderHistoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Tender History" navigation={navigation} />
       <Text style={styles.title}>Posted Tender History</Text>
 
       <TextInput

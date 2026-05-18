@@ -4,6 +4,7 @@ import { colors } from '../theme/theme';
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function OrganProfileScreen({ navigation }) {
   const [organData, setOrganData] = useState(null);
@@ -49,6 +50,7 @@ export default function OrganProfileScreen({ navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <ScreenHeader title="Organ Profile" navigation={navigation} />
       <Text style={styles.title}>Organ Profile</Text>
 
       {organData ? (

@@ -4,8 +4,9 @@ import { colors } from '../theme/theme';
 import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
+import ScreenHeader from '../components/ScreenHeader';
 
-export default function ApproveDeclineScreen() {
+export default function ApproveDeclineScreen({ navigation }) {
   const auth = getAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +77,7 @@ export default function ApproveDeclineScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Requests" navigation={navigation} />
       {requests.length === 0 ? (
         <Text style={{ color: '#fff', fontSize: 16 }}>No pending requests assigned to you.</Text>
       ) : (

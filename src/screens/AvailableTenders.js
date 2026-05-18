@@ -3,6 +3,7 @@ import { View, Text, Button, StyleSheet, FlatList } from 'react-native';
 import { colors } from '../theme/theme';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function AvailableTendersScreen({ navigation }) {
   const [tenders, setTenders] = useState([]);
@@ -19,6 +20,7 @@ export default function AvailableTendersScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Available Tenders" navigation={navigation} />
       <FlatList
         data={tenders}
         keyExtractor={(item) => item.id}

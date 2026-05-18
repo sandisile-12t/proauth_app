@@ -5,6 +5,7 @@ import { colors } from '../theme/theme';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function PostTenderScreen({ navigation }) {
   const [tenderNumber, setTenderNumber] = useState('');
@@ -71,6 +72,7 @@ export default function PostTenderScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Post Tender" navigation={navigation} />
       <Text style={styles.header}>Post a Tender</Text>
 
       <TextInput
