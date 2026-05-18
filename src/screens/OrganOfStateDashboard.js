@@ -3,9 +3,21 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 import ScreenHeader from '../components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
+import { getAuth, signOut } from 'firebase/auth';
 
 export default function OrganDashboardScreen({ navigation }) {
+  const auth = getAuth();
   const sampleTenderId = 'abc123';
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    }
+  };
 
   const Card = ({ icon, title, onPress }) => (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
@@ -18,7 +30,14 @@ export default function OrganDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Organ Dashboard" navigation={navigation} showBack={false} />
+      <ScreenHeader title="Organ Dashboard" />
+
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={18} color="#fff" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.subtitle}>Manage tenders and view interactions</Text>
 
@@ -78,4 +97,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  actionRow: { paddingHorizontal: 16, marginTop: 16, alignItems: 'flex-end' },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  logoutText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
 });

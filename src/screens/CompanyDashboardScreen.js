@@ -1,13 +1,23 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signOut } from 'firebase/auth';
 import ScreenHeader from '../components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CompanyDashboardScreen({ navigation }) {
   const auth = getAuth();
   const loggedInCompanyId = auth.currentUser?.uid;
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    }
+  };
 
   const Card = ({ icon, title, subtitle, onPress }) => (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
@@ -21,7 +31,14 @@ export default function CompanyDashboardScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Company Dashboard" navigation={navigation} showBack={false} />
+      <ScreenHeader title="Company Dashboard" />
+
+      <View style={styles.actionRow}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={18} color="#fff" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.welcome}>Welcome, Company</Text>
 
@@ -80,4 +97,14 @@ const styles = StyleSheet.create({
   cardText: { flex: 1 },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   cardSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+  actionRow: { paddingHorizontal: 16, marginTop: 16, alignItems: 'flex-end' },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.accent,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  logoutText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
 });
