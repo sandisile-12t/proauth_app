@@ -127,3 +127,4 @@ const styles = StyleSheet.create({
   closingDate: { fontSize: 13, fontStyle: 'italic', color: '#777' },
   actions: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 20 },
 });
+

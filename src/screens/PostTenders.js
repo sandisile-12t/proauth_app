@@ -53,7 +53,7 @@ export default function PostTenderScreen({ navigation }) {
       alert('Tender posted successfully!');
 
       // ✅ Pass tender with Firestore ID forward
-      navigation.navigate('AvailableTendersScreen', {
+      navigation.navigate('Tenders', {
         tender: {
           id: docRef.id,          // Firestore doc ID
           tenderNumber,

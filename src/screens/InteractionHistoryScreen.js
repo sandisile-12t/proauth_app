@@ -10,6 +10,9 @@ export default function InteractionHistoryScreen() {
   const [decisions, setDecisions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
+  const normalizedRole = userRole ? userRole.toLowerCase() : null;
+  const [tenderCount, setTenderCount] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('');
   const [individualDetails, setIndividualDetails] = useState({});
 
   useEffect(() => {
@@ -20,21 +23,21 @@ export default function InteractionHistoryScreen() {
       // ✅ Check users collection first
       let userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
-        setUserRole(userDoc.data().role);
+        setUserRole(String(userDoc.data().role || '').trim());
         return;
       }
       
       // ✅ Check company_users collection
       userDoc = await getDoc(doc(db, 'company_users', user.uid));
       if (userDoc.exists()) {
-        setUserRole(userDoc.data().role);
+        setUserRole(String(userDoc.data().role || '').trim());
         return;
       }
       
       // ✅ Check organ collection
       userDoc = await getDoc(doc(db, 'organ', user.uid));
       if (userDoc.exists()) {
-        setUserRole(userDoc.data().role);
+        setUserRole(String(userDoc.data().role || '').trim());
         return;
       }
     };
@@ -68,6 +71,7 @@ export default function InteractionHistoryScreen() {
     const handleSnapshot = (snapshot) => {
       const decisionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setDecisions(decisionsData);
+      setStatusMessage(decisionsData.length === 0 ? 'No interaction history found.' : '');
       
       // Fetch individual details for all decisions
       decisionsData.forEach(decision => {
@@ -79,23 +83,26 @@ export default function InteractionHistoryScreen() {
       setLoading(false);
     };
 
-    if (userRole === 'Individual') {
+    if (normalizedRole === 'individual') {
       // Show decisions made by this individual
       const q = query(collection(db, 'approval_decisions'), where('individualId', '==', user.uid));
       unsub = onSnapshot(q, handleSnapshot);
-    } else if (userRole === 'Company') {
+    } else if (normalizedRole === 'company') {
       // Show decisions on tenders posted by this company (where companyId matches the user's UID)
       const q = query(collection(db, 'approval_decisions'), where('companyId', '==', user.uid));
       unsub = onSnapshot(q, handleSnapshot);
-    } else if (userRole === 'Organ' || userRole === 'OrganOfState') {
+    } else if (normalizedRole === 'organ' || normalizedRole === 'organofstate') {
       // Show all interactions/decisions on tenders posted by this organ
       const tendersQuery = query(collection(db, 'tenders'), where('organId', '==', user.uid));
       const decisionListeners = [];
 
       unsub = onSnapshot(tendersQuery, async (tenderSnap) => {
         const tenderIds = tenderSnap.docs.map(doc => doc.id);
+        setTenderCount(tenderIds.length);
+
         if (tenderIds.length > 0) {
           setDecisions([]);
+          setStatusMessage(`${tenderIds.length} tender(s) found. Loading decisions...`);
 
           for (let i = 0; i < tenderIds.length; i += 10) {
             const chunk = tenderIds.slice(i, i + 10);
@@ -116,6 +123,9 @@ export default function InteractionHistoryScreen() {
               setDecisions(prevDecisions => {
                 const combined = [...prevDecisions, ...chunkDecisions];
                 const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                setStatusMessage(unique.length === 0
+                  ? `${tenderIds.length} tender(s) found, but no decisions yet.`
+                  : `${tenderIds.length} tender(s) found, ${unique.length} decision(s) loaded.`);
                 return unique;
               });
             });
@@ -126,6 +136,7 @@ export default function InteractionHistoryScreen() {
           setLoading(false);
         } else {
           setDecisions([]);
+          setStatusMessage('No tenders found for this organ account.');
           setLoading(false);
         }
       });
@@ -151,7 +162,12 @@ export default function InteractionHistoryScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Interaction History</Text>
       {decisions.length === 0 ? (
-        <Text style={styles.empty}>No interaction history found.</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.empty}>{statusMessage || 'No interaction history found.'}</Text>
+          {normalizedRole === 'organ' && tenderCount > 0 && (
+            <Text style={styles.hint}>Waiting for individuals to submit approvals...</Text>
+          )}
+        </View>
       ) : (
         <FlatList
           data={decisions}
@@ -197,7 +213,9 @@ export default function InteractionHistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primary, padding: 20 },
   title: { fontSize: 22, fontWeight: 'bold', color: colors.accent, marginBottom: 20, textAlign: 'center' },
+  emptyContainer: { alignItems: 'center', marginTop: 50 },
   empty: { color: '#fff', fontSize: 16, textAlign: 'center', marginTop: 20 },
+  hint: { color: colors.accent, fontSize: 14, marginTop: 10, fontStyle: 'italic', textAlign: 'center' },
   card: {
     backgroundColor: '#fff',
     padding: 16,
