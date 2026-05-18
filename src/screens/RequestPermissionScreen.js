@@ -57,17 +57,19 @@ export default function RequestPermissionScreen({ route, navigation }) {
       }
 
       await addDoc(collection(db, 'permission_requests'), {
-        tenderId: tender.id,
-        tenderNumber: tender.tenderNumber,
-        description: tender.description,
-        closingDate: tender.closingDate,
-        companyId: user.uid,
-        companyName: companyData.companyName || 'Unknown Company',
-        companyReg: companyData.companyReg || '',
-        individualIds: selectedIndividuals.map(ind => ind.uid),
-        individualDetails: selectedIndividuals,
-        createdAt: new Date(),
-      });
+  tenderId: tender.id,
+  tenderNumber: tender.tenderNumber,
+  description: tender.description,
+  closingDate: tender.closingDate,
+  companyId: user.uid,
+  companyName: companyData.companyName || 'Unknown Company',
+  companyReg: companyData.companyReg || '',
+  individualIds: selectedIndividuals.map(ind => ind.uid), // must be UID
+  individualDetails: selectedIndividuals,
+  status: 'Pending',   // 👈 REQUIRED
+  createdAt: new Date(),
+});
+
 
       Alert.alert('Submitted', `Request sent to ${selectedIndividuals.length} individuals.`);
       setSelected([]);
