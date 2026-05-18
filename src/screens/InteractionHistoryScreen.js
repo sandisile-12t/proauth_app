@@ -1,32 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from '../theme/theme';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import { getAuth } from 'firebase/auth';
 
-export default function OrganInteractionsScreen() {
-  const [interactions, setInteractions] = useState([]);
+export default function InteractionHistoryScreen({ route }) {
+  const { tenderId } = route.params; // Organ of State passes tenderId
+  const auth = getAuth();
+  const [decisions, setDecisions] = useState([]);
+  const [tender, setTender] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchInteractions = async () => {
-      try {
-        // 🔹 Adjust collection name to match your Firestore setup
-        const querySnapshot = await getDocs(collection(db, 'interactions'));
-        const data = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setInteractions(data);
-      } catch (error) {
-        console.error("Error fetching interactions:", error);
-      } finally {
-        setLoading(false);
+    if (!tenderId) {
+      setLoading(false);
+      return;
+    }
+
+    // 🔎 Fetch tender details
+    const fetchTender = async () => {
+      const tenderDoc = await getDoc(doc(db, 'tenders', tenderId));
+      if (tenderDoc.exists()) {
+        setTender(tenderDoc.data());
       }
     };
 
-    fetchInteractions();
-  }, []);
+    fetchTender();
+
+    // 🔎 Fetch all approval decisions for this tender
+    const q = query(collection(db, 'approval_decisions'), where('tenderId', '==', tenderId));
+    const unsub = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        setDecisions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } else {
+        setDecisions([]);
+      }
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, [tenderId]);
 
   if (loading) {
     return (
@@ -38,33 +52,55 @@ export default function OrganInteractionsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tender Interactions</Text>
-      <FlatList
-        data={interactions}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.tenderTitle}>{item.tenderTitle}</Text>
-            <Text style={styles.company}>Company: {item.companyName}</Text>
-            <Text style={styles.subtitle}>Professionals:</Text>
-            {item.professionals && item.professionals.map((prof) => (
-              <Text key={prof.id} style={styles.professional}>
-                {prof.name} - {prof.role} ({prof.status})
-              </Text>
-            ))}
-          </View>
-        )}
-      />
+      {tender && (
+        <View style={styles.tenderCard}>
+          <Text style={styles.title}>Tender: {tender.tenderNumber}</Text>
+          <Text style={styles.detail}>Description: {tender.description}</Text>
+          <Text style={styles.detail}>Closing Date: {tender.closingDate}</Text>
+          <Text style={styles.detail}>Key Personnel: {tender.keyPersonnel?.join(', ')}</Text>
+        </View>
+      )}
+
+      {decisions.length === 0 ? (
+        <Text style={styles.empty}>No interaction history found.</Text>
+      ) : (
+        <FlatList
+          data={decisions}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <Text style={styles.company}>Company: {item.companyName}</Text>
+              <Text style={styles.detail}>Individual ID: {item.individualId}</Text>
+              <Text style={styles.detail}>Decision: {item.decision}</Text>
+              <Text style={styles.detail}>Date: {new Date(item.createdAt.seconds * 1000).toLocaleString()}</Text>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: colors.primary },
-  title: { fontSize: 24, fontWeight: 'bold', color: colors.accent, marginBottom: 20 },
-  card: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginVertical: 8 },
-  tenderTitle: { fontSize: 18, fontWeight: 'bold', color: colors.text },
-  company: { fontSize: 16, color: colors.text, marginVertical: 4 },
-  subtitle: { fontSize: 16, fontWeight: 'bold', marginTop: 10, color: colors.accent },
-  professional: { fontSize: 14, color: colors.text, marginLeft: 10 },
+  container: { flex: 1, backgroundColor: colors.primary, padding: 20 },
+  tenderCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+  title: { fontSize: 18, fontWeight: 'bold', color: colors.accent },
+  detail: { fontSize: 14, color: '#333', marginTop: 4 },
+  empty: { color: '#fff', fontSize: 16, textAlign: 'center', marginTop: 20 },
+  card: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  company: { fontSize: 16, fontWeight: 'bold', color: colors.accent },
 });
