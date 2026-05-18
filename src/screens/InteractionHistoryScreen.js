@@ -162,7 +162,6 @@ export default function InteractionHistoryScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScreenHeader title="Interaction History" navigation={navigation} />
-      <Text style={styles.title}>Interaction History</Text>
       {decisions.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.empty}>{statusMessage || 'No interaction history found.'}</Text>
