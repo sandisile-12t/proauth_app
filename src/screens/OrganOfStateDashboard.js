@@ -3,10 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 
 export default function OrganDashboardScreen({ navigation }) {
+  // Example: hardcoded tenderId for now. Replace with actual tender.id from Firestore.
+  const sampleTenderId = 'abc123';
+
   const menuItems = [
     { title: 'Profile', route: 'OrganProfile' },
     { title: 'Post Tender', route: 'PostTenders' },
-    { title: 'Interactions', route: 'InteractionsHistory' },
+    { title: 'Interactions', route: 'History', params: { tenderId: sampleTenderId } },
     { title: 'History', route: 'PostTenderHistory' },
   ];
 
@@ -18,7 +21,7 @@ export default function OrganDashboardScreen({ navigation }) {
           <TouchableOpacity
             key={index}
             style={styles.button}
-            onPress={() => navigation.navigate(item.route)}
+            onPress={() => navigation.navigate(item.route, item.params)}
           >
             <Text style={styles.buttonText}>{item.title}</Text>
           </TouchableOpacity>

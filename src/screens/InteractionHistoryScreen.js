@@ -6,7 +6,14 @@ import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
 
 export default function InteractionHistoryScreen({ route }) {
-  const { tenderId } = route.params; // Organ of State passes tenderId
+  const { tenderId } = route.params || {};
+if (!tenderId) {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.empty}>No tender selected.</Text>
+    </View>
+  );
+}
   const auth = getAuth();
   const [decisions, setDecisions] = useState([]);
   const [tender, setTender] = useState(null);

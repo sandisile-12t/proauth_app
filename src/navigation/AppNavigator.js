@@ -44,7 +44,6 @@ export default function AppNavigator() {
         {/* Individual */}
         <Stack.Screen name="Dashboard" component={individualdashboard} />
         <Stack.Screen name="Profile" component={individualProfileScreen} />
-        <Stack.Screen name="History" component={InteractionHistoryScreen} />
         <Stack.Screen name="Requests" component={ApproveDeclineScreen} />
 
         {/* Company */}
@@ -58,6 +57,9 @@ export default function AppNavigator() {
         <Stack.Screen name="PostTenders" component={PostTenders} />
         <Stack.Screen name="PostTenderHistory" component={PostTenderHistoryScreen} /> 
         <Stack.Screen name="OrganProfile" component={OrganProfile} />
+
+        {/* Interaction History */}
+        <Stack.Screen name="History" component={InteractionHistoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

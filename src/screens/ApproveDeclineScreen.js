@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { colors } from '../theme/theme';
-import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
 
@@ -17,10 +17,11 @@ export default function ApproveDeclineScreen() {
       return;
     }
 
-    // 🔎 Find requests that include this individual’s UID
+    // 🔎 Only fetch requests assigned to this individual AND still pending
     const q = query(
       collection(db, 'permission_requests'),
-      where('individualIds', 'array-contains', user.uid) // ✅ match by UID
+      where('individualIds', 'array-contains', user.uid),
+      where('status', '==', 'Pending')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -43,14 +44,20 @@ export default function ApproveDeclineScreen() {
         return;
       }
 
+      // Save decision in approval_decisions
       await addDoc(collection(db, 'approval_decisions'), {
         tenderId: request.tenderId,
         tenderNumber: request.tenderNumber,
-        individualId: user.uid,       // ✅ decision tied to this individual
+        individualId: user.uid,
         decision,                     // "Accepted" or "Declined"
-        companyId: request.companyId, // ✅ include company info
-        companyName: request.companyName, // ✅ now shows correct company
+        companyId: request.companyId,
+        companyName: request.companyName,
         createdAt: new Date(),
+      });
+
+      // Update request status so it no longer appears in "Pending"
+      await updateDoc(doc(db, 'permission_requests', request.id), {
+        status: decision,
       });
 
       Alert.alert('Success', `You have ${decision.toLowerCase()} this tender.`);
@@ -71,7 +78,7 @@ export default function ApproveDeclineScreen() {
   return (
     <View style={styles.container}>
       {requests.length === 0 ? (
-        <Text style={{ color: '#fff', fontSize: 16 }}>No requests assigned to you.</Text>
+        <Text style={{ color: '#fff', fontSize: 16 }}>No pending requests assigned to you.</Text>
       ) : (
         <FlatList
           data={requests}
