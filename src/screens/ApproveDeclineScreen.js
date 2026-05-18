@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, Alert, ActivityIndicator, FlatList } from 'react-native';
 import { colors } from '../theme/theme';
-import { collection, query, where, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
 
@@ -17,7 +17,6 @@ export default function ApproveDeclineScreen() {
       return;
     }
 
-    // 🔎 Only fetch requests assigned to this individual AND still pending
     const q = query(
       collection(db, 'permission_requests'),
       where('individualIds', 'array-contains', user.uid),
@@ -25,11 +24,7 @@ export default function ApproveDeclineScreen() {
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } else {
-        setRequests([]);
-      }
+      setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });
 
@@ -44,18 +39,22 @@ export default function ApproveDeclineScreen() {
         return;
       }
 
-      // Save decision in approval_decisions
+      // 🔎 Fetch tender details to ensure description/closingDate are present
+      const tenderDoc = await getDoc(doc(db, 'tenders', request.tenderId));
+      const tenderData = tenderDoc.exists() ? tenderDoc.data() : {};
+
       await addDoc(collection(db, 'approval_decisions'), {
         tenderId: request.tenderId,
         tenderNumber: request.tenderNumber,
+        tenderDescription: tenderData.description || request.description || '',
+        tenderClosingDate: tenderData.closingDate || request.closingDate || '',
         individualId: user.uid,
-        decision,                     // "Accepted" or "Declined"
+        decision,
         companyId: request.companyId,
         companyName: request.companyName,
         createdAt: new Date(),
       });
 
-      // Update request status so it no longer appears in "Pending"
       await updateDoc(doc(db, 'permission_requests', request.id), {
         status: decision,
       });
@@ -85,13 +84,11 @@ export default function ApproveDeclineScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.detailsCard}>
-              {/* Tender Details */}
               <Text style={styles.company}>{item.companyName ?? 'Unknown Company'}</Text>
               <Text style={styles.bidNumber}>Bid No: {item.tenderNumber ?? 'N/A'}</Text>
               <Text style={styles.description}>{item.description ?? 'No description provided'}</Text>
               <Text style={styles.closingDate}>Closing Date: {item.closingDate ?? 'N/A'}</Text>
 
-              {/* Actions */}
               <View style={styles.actions}>
                 <Button
                   title="Accept"

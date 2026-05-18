@@ -5,49 +5,139 @@ import { collection, query, where, onSnapshot, getDoc, doc } from 'firebase/fire
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
 
-export default function InteractionHistoryScreen({ route }) {
-  const { tenderId } = route.params || {};
-if (!tenderId) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.empty}>No tender selected.</Text>
-    </View>
-  );
-}
+export default function InteractionHistoryScreen() {
   const auth = getAuth();
   const [decisions, setDecisions] = useState([]);
-  const [tender, setTender] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState(null);
+  const [individualDetails, setIndividualDetails] = useState({});
 
   useEffect(() => {
-    if (!tenderId) {
+    const fetchRole = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      // ✅ Check users collection first
+      let userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        setUserRole(userDoc.data().role);
+        return;
+      }
+      
+      // ✅ Check company_users collection
+      userDoc = await getDoc(doc(db, 'company_users', user.uid));
+      if (userDoc.exists()) {
+        setUserRole(userDoc.data().role);
+        return;
+      }
+      
+      // ✅ Check organ collection
+      userDoc = await getDoc(doc(db, 'organ', user.uid));
+      if (userDoc.exists()) {
+        setUserRole(userDoc.data().role);
+        return;
+      }
+    };
+    fetchRole();
+  }, [auth.currentUser?.uid]);
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user || !userRole) {
       setLoading(false);
       return;
     }
 
-    // 🔎 Fetch tender details
-    const fetchTender = async () => {
-      const tenderDoc = await getDoc(doc(db, 'tenders', tenderId));
-      if (tenderDoc.exists()) {
-        setTender(tenderDoc.data());
+    let unsub;
+    
+    const fetchIndividualDetails = async (individualId) => {
+      if (!individualId || individualDetails[individualId]) return;
+      try {
+        const indDoc = await getDoc(doc(db, 'users', individualId));
+        if (indDoc.exists()) {
+          setIndividualDetails(prev => ({
+            ...prev,
+            [individualId]: indDoc.data()
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching individual details:', error);
       }
     };
 
-    fetchTender();
-
-    // 🔎 Fetch all approval decisions for this tender
-    const q = query(collection(db, 'approval_decisions'), where('tenderId', '==', tenderId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        setDecisions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      } else {
-        setDecisions([]);
-      }
+    const handleSnapshot = (snapshot) => {
+      const decisionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setDecisions(decisionsData);
+      
+      // Fetch individual details for all decisions
+      decisionsData.forEach(decision => {
+        if (decision.individualId) {
+          fetchIndividualDetails(decision.individualId);
+        }
+      });
+      
       setLoading(false);
-    });
+    };
 
-    return () => unsub();
-  }, [tenderId]);
+    if (userRole === 'Individual') {
+      // Show decisions made by this individual
+      const q = query(collection(db, 'approval_decisions'), where('individualId', '==', user.uid));
+      unsub = onSnapshot(q, handleSnapshot);
+    } else if (userRole === 'Company') {
+      // Show decisions on tenders posted by this company (where companyId matches the user's UID)
+      const q = query(collection(db, 'approval_decisions'), where('companyId', '==', user.uid));
+      unsub = onSnapshot(q, handleSnapshot);
+    } else if (userRole === 'Organ' || userRole === 'OrganOfState') {
+      // Show all interactions/decisions on tenders posted by this organ
+      const tendersQuery = query(collection(db, 'tenders'), where('organId', '==', user.uid));
+      const decisionListeners = [];
+
+      unsub = onSnapshot(tendersQuery, async (tenderSnap) => {
+        const tenderIds = tenderSnap.docs.map(doc => doc.id);
+        if (tenderIds.length > 0) {
+          setDecisions([]);
+
+          for (let i = 0; i < tenderIds.length; i += 10) {
+            const chunk = tenderIds.slice(i, i + 10);
+            const decisionsQuery = query(
+              collection(db, 'approval_decisions'),
+              where('tenderId', 'in', chunk)
+            );
+
+            const decisionUnsub = onSnapshot(decisionsQuery, (snapshot) => {
+              const chunkDecisions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+              chunkDecisions.forEach(decision => {
+                if (decision.individualId) {
+                  fetchIndividualDetails(decision.individualId);
+                }
+              });
+
+              setDecisions(prevDecisions => {
+                const combined = [...prevDecisions, ...chunkDecisions];
+                const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
+                return unique;
+              });
+            });
+
+            decisionListeners.push(decisionUnsub);
+          }
+
+          setLoading(false);
+        } else {
+          setDecisions([]);
+          setLoading(false);
+        }
+      });
+
+      return () => {
+        if (unsub) unsub();
+        decisionListeners.forEach(listener => listener());
+      };
+    }
+
+    return () => unsub && unsub();
+  }, [userRole, auth.currentUser?.uid]);
 
   if (loading) {
     return (
@@ -59,29 +149,45 @@ if (!tenderId) {
 
   return (
     <View style={styles.container}>
-      {tender && (
-        <View style={styles.tenderCard}>
-          <Text style={styles.title}>Tender: {tender.tenderNumber}</Text>
-          <Text style={styles.detail}>Description: {tender.description}</Text>
-          <Text style={styles.detail}>Closing Date: {tender.closingDate}</Text>
-          <Text style={styles.detail}>Key Personnel: {tender.keyPersonnel?.join(', ')}</Text>
-        </View>
-      )}
-
+      <Text style={styles.title}>Interaction History</Text>
       {decisions.length === 0 ? (
         <Text style={styles.empty}>No interaction history found.</Text>
       ) : (
         <FlatList
           data={decisions}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <Text style={styles.company}>Company: {item.companyName}</Text>
-              <Text style={styles.detail}>Individual ID: {item.individualId}</Text>
-              <Text style={styles.detail}>Decision: {item.decision}</Text>
-              <Text style={styles.detail}>Date: {new Date(item.createdAt.seconds * 1000).toLocaleString()}</Text>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const individual = individualDetails[item.individualId];
+            return (
+              <View style={styles.card}>
+                <Text style={styles.company}>Company: {item.companyName || 'N/A'}</Text>
+                <Text style={styles.detail}>Tender: {item.tenderNumber || 'N/A'}</Text>
+                <Text style={styles.detail}>Description: {item.tenderDescription || 'No description'}</Text>
+                <Text style={styles.detail}>Closing Date: {item.tenderClosingDate || 'N/A'}</Text>
+                
+                {/* Key Personnel Details */}
+                {userRole !== 'Individual' && individual && (
+                  <View style={styles.personnelSection}>
+                    <Text style={styles.personnelTitle}>Key Personnel:</Text>
+                    <Text style={styles.detail}>Name: {individual.firstName} {individual.lastName}</Text>
+                    <Text style={styles.detail}>Profession: {individual.profession || 'N/A'}</Text>
+                    <Text style={styles.detail}>Email: {individual.email || 'N/A'}</Text>
+                   <Text style={[styles.detail, { fontWeight: 'bold', marginTop: 8 }]}>
+                  Decision: {item.decision}
+                </Text>
+                <Text style={styles.detail}>
+                  Date: {item.createdAt?.seconds 
+                    ? new Date(item.createdAt.seconds * 1000).toLocaleString() 
+                    : new Date(item.createdAt).toLocaleString()}
+                </Text>
+                  
+                  </View>
+                )}
+                
+               
+              </View>
+            );
+          }}
         />
       )}
     </View>
@@ -90,14 +196,7 @@ if (!tenderId) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primary, padding: 20 },
-  tenderCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  title: { fontSize: 18, fontWeight: 'bold', color: colors.accent },
-  detail: { fontSize: 14, color: '#333', marginTop: 4 },
+  title: { fontSize: 22, fontWeight: 'bold', color: colors.accent, marginBottom: 20, textAlign: 'center' },
   empty: { color: '#fff', fontSize: 16, textAlign: 'center', marginTop: 20 },
   card: {
     backgroundColor: '#fff',
@@ -110,4 +209,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   company: { fontSize: 16, fontWeight: 'bold', color: colors.accent },
+  detail: { fontSize: 14, color: '#333', marginTop: 4 },
+  personnelSection: { 
+    backgroundColor: '#f9f9f9', 
+    padding: 12, 
+    borderRadius: 8, 
+    marginTop: 12, 
+    borderLeftWidth: 3, 
+    borderLeftColor: colors.accent 
+  },
+  personnelTitle: { fontSize: 14, fontWeight: '600', color: colors.accent, marginBottom: 8 },
 });
