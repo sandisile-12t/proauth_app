@@ -3,14 +3,19 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 import { getAuth } from 'firebase/auth';
 import ScreenHeader from '../components/ScreenHeader';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CompanyDashboardScreen({ navigation }) {
   const auth = getAuth();
   const loggedInCompanyId = auth.currentUser?.uid;
 
-  const DashboardButton = ({ title, onPress }) => (
-    <TouchableOpacity style={styles.button} onPress={onPress}>
-      <Text style={styles.buttonText}>{title}</Text>
+  const Card = ({ icon, title, subtitle, onPress }) => (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+      <View style={styles.iconWrap}>{icon}</View>
+      <View style={styles.cardText}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+      </View>
     </TouchableOpacity>
   );
 
@@ -18,53 +23,61 @@ export default function CompanyDashboardScreen({ navigation }) {
     <View style={styles.container}>
       <ScreenHeader title="Company Dashboard" navigation={navigation} showBack={false} />
 
-      <DashboardButton
-        title="Profile"
-        onPress={() =>
-          navigation.navigate('CProfile', { companyId: loggedInCompanyId })
-        }
-      />
+      <Text style={styles.welcome}>Welcome, Company</Text>
 
-      <DashboardButton
-        title="Available Tenders"
-        onPress={() => navigation.navigate('Tenders')}
-      />
+      <View style={styles.grid}>
+        <Card
+          icon={<Ionicons name="person-circle" size={36} color={colors.accent} />}
+          title="Profile"
+          subtitle="Manage company details"
+          onPress={() => navigation.navigate('CProfile', { companyId: loggedInCompanyId })}
+        />
 
-      <DashboardButton
-        title="Interaction History"
-        onPress={() => navigation.navigate('History')}
-      />
+        <Card
+          icon={<Ionicons name="briefcase" size={36} color={colors.accent} />}
+          title="Available Tenders"
+          subtitle="View and request"
+          onPress={() => navigation.navigate('Tenders')}
+        />
+
+        <Card
+          icon={<Ionicons name="time" size={36} color={colors.accent} />}
+          title="Interaction History"
+          subtitle="Approvals and responses"
+          onPress={() => navigation.navigate('History')}
+        />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: colors.primary, 
-    padding: 20 
+  container: { flex: 1, backgroundColor: colors.primary },
+  welcome: { color: '#fff', fontSize: 20, fontWeight: '600', marginTop: 18, marginLeft: 16 },
+  grid: { padding: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  card: {
+    backgroundColor: colors.background,
+    width: '48%',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: colors.accent, 
-    marginBottom: 40 
+  iconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  button: { 
-    backgroundColor: colors.accent, 
-    paddingVertical: 15, 
-    paddingHorizontal: 30, 
-    borderRadius: 12, 
-    marginVertical: 10, 
-    width: '80%', 
-    alignItems: 'center', 
-    elevation: 3 
-  },
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: '600' 
-  },
+  cardText: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  cardSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
 });

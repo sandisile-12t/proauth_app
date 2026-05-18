@@ -136,7 +136,15 @@ const styles = StyleSheet.create({
   dateText: { color: colors.text, fontSize: 16 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.accent, marginBottom: 10 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  checkbox: { width: 20, height: 20, borderWidth: 2, borderColor: colors.accent, marginRight: 10, borderRadius: 4 },
+  checkbox: { 
+    width: 20, 
+    height: 20, 
+    borderWidth: 2, 
+    borderColor: colors.accent, 
+    marginRight: 10, 
+    borderRadius: 4 
+  },
   checkboxSelected: { backgroundColor: colors.accent },
-  checkboxLabel: { fontSize: 16, color: colors.text },
+  // 👇 changed to white
+  checkboxLabel: { fontSize: 16, color: '#fff' },
 });

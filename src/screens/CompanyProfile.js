@@ -73,7 +73,18 @@ if (!companyId) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: colors.primary },
-  title: { fontSize: 24, fontWeight: 'bold', color: colors.accent, marginBottom: 20 },
-  detail: { fontSize: 16, color: colors.text, marginBottom: 10 },
+  title: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    color: colors.accent, 
+    marginBottom: 20 
+  },
+  // 👇 changed to white
+  detail: { 
+    fontSize: 16, 
+    color: '#fff', 
+    marginBottom: 10 
+  },
   error: { fontSize: 18, color: 'red' },
 });
+
