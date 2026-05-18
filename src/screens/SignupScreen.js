@@ -19,6 +19,8 @@ export default function UnifiedSignupScreen({ route, navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const [companies, setCompanies] = useState([]);
   const auth = getAuth();
@@ -39,7 +41,76 @@ export default function UnifiedSignupScreen({ route, navigation }) {
     fetchCompanies();
   }, []);
 
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const validateSignup = () => {
+    if (!email.trim()) {
+      setError('Email is required.');
+      return false;
+    }
+    if (!isValidEmail(email.trim())) {
+      setError('Please enter a valid email address.');
+      return false;
+    }
+    if (!password) {
+      setError('Password is required.');
+      return false;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return false;
+    }
+
+    if (role === 'Individual') {
+      if (!firstName.trim()) {
+        setError('First name is required.');
+        return false;
+      }
+      if (!lastName.trim()) {
+        setError('Last name is required.');
+        return false;
+      }
+      if (!selectedCompanyId) {
+        setError('Please select a company.');
+        return false;
+      }
+      if (!profession) {
+        setError('Please select your profession.');
+        return false;
+      }
+    }
+
+    if (role === 'Company') {
+      if (!companyName.trim()) {
+        setError('Company name is required.');
+        return false;
+      }
+      if (!companyReg.trim()) {
+        setError('Company registration number is required.');
+        return false;
+      }
+    }
+
+    if (role === 'Organ') {
+      if (!organName.trim()) {
+        setError('Organ of state name is required.');
+        return false;
+      }
+      if (!department.trim()) {
+        setError('Department is required.');
+        return false;
+      }
+    }
+
+    setError('');
+    return true;
+  };
+
   const handleSignup = async () => {
+    if (!validateSignup()) {
+      return;
+    }
+    setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
@@ -60,15 +131,15 @@ export default function UnifiedSignupScreen({ route, navigation }) {
       await setDoc(doc(db, targetCollection, user.uid), {
         uid: user.uid,
         role,
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         profession,
         companyId: selectedCompanyId || null,
-        companyName: role === 'Individual' ? (companyData.companyName || '') : companyName,
-        companyReg: role === 'Individual' ? (companyData.companyReg || '') : companyReg,
-        organName,
-        department,
-        email,
+        companyName: role === 'Individual' ? (companyData.companyName || '') : companyName.trim(),
+        companyReg: role === 'Individual' ? (companyData.companyReg || '') : companyReg.trim(),
+        organName: organName.trim(),
+        department: department.trim(),
+        email: email.trim(),
         createdAt: new Date(),
       });
 
@@ -76,7 +147,9 @@ export default function UnifiedSignupScreen({ route, navigation }) {
       navigation.navigate('Login', { role });
     } catch (error) {
       console.error("Error signing up:", error);
-      alert('Signup failed: ' + error.message);
+      setError(error.message || 'Signup failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -172,8 +245,13 @@ export default function UnifiedSignupScreen({ route, navigation }) {
       <TextInput
         style={styles.input}
         placeholder="Email"
+        keyboardType="email-address"
+        autoCapitalize="none"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(value) => {
+          setEmail(value);
+          if (error) setError('');
+        }}
       />
       <View style={styles.passwordContainer}>
         <TextInput
@@ -181,14 +259,20 @@ export default function UnifiedSignupScreen({ route, navigation }) {
           placeholder="Password"
           secureTextEntry={!showPassword}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(value) => {
+            setPassword(value);
+            if (error) setError('');
+          }}
         />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
           <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.button} onPress={handleSignup}>
-        <Text style={styles.buttonText}>Sign Up</Text>
+
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSignup} disabled={loading}>
+        <Text style={styles.buttonText}>{loading ? 'Signing Up...' : 'Sign Up'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -204,5 +288,7 @@ const styles = StyleSheet.create({
   passwordInput: { flex: 1, padding: 12 },
   eye: { fontSize: 20, paddingHorizontal: 10 },
   button: { backgroundColor: colors.accent, paddingVertical: 14, borderRadius: 25, alignItems: 'center', marginTop: 20 },
+  buttonDisabled: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  errorText: { color: '#FF6961', marginTop: 8, textAlign: 'center', fontWeight: '600' },
 });
