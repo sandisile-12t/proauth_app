@@ -38,6 +38,11 @@ export default function LoginScreen({ route, navigation }) {
         value={password}
         onChangeText={setPassword}
       />
+
+      <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword', { role })}>
+        <Text style={styles.link}>Forgot password?</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
@@ -51,4 +56,5 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#fff', padding: 12, marginVertical: 10, borderRadius: 8 },
   button: { backgroundColor: colors.accent, paddingVertical: 14, borderRadius: 25, alignItems: 'center', marginTop: 20 },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  link: { color: colors.accent, textAlign: 'center', marginTop: 8, textDecorationLine: 'underline' },
 });

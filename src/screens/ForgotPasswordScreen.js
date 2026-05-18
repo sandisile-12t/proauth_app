@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 
-export default function ForgotPasswordScreen() {
-  const [role, setRole] = useState('Individual');
+export default function ForgotPasswordScreen({ route }) {
+  const initialRole = route?.params?.role || 'Individual';
+  const [role, setRole] = useState(initialRole);
   const [email, setEmail] = useState('');
 
   const handleReset = () => {
