@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { colors } from '../theme/theme';
 import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
@@ -154,7 +154,7 @@ export default function UnifiedSignupScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Sign Up as {role}</Text>
 
       {role === 'Individual' && (
@@ -274,7 +274,7 @@ export default function UnifiedSignupScreen({ route, navigation }) {
       <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSignup} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? 'Signing Up...' : 'Sign Up'}</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 

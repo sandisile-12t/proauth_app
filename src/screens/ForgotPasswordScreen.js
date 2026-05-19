@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 
 export default function ForgotPasswordScreen({ route }) {
@@ -13,7 +13,7 @@ export default function ForgotPasswordScreen({ route }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Forgot Password</Text>
 
       <View style={styles.roleButtons}>
@@ -24,7 +24,7 @@ export default function ForgotPasswordScreen({ route }) {
 
       <TextInput style={styles.input} placeholder="Enter your email" value={email} onChangeText={setEmail} />
       <Button title="Reset Password" color={colors.accent} onPress={handleReset} />
-    </View>
+    </ScrollView>
   );
 }
 

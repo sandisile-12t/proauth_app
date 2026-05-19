@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { colors } from '../theme/theme';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -51,7 +51,7 @@ if (!companyId) {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <ScreenHeader title="Company Profile" navigation={navigation} />
       <Text style={styles.title}>{company.companyId}</Text>
       <Text style={styles.detail}>Registration No: {company.companyReg}</Text>
@@ -67,7 +67,7 @@ if (!companyId) {
           Created: {new Date(company.createdAt.seconds * 1000).toDateString()}
         </Text>
       )}
-    </View>
+    </ScrollView>
   );
 }
 

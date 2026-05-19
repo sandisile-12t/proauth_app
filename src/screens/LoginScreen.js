@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
@@ -23,7 +23,7 @@ export default function LoginScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Login as {role}</Text>
       <TextInput
         style={styles.input}
@@ -46,7 +46,7 @@ export default function LoginScreen({ route, navigation }) {
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Login</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 

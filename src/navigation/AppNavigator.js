@@ -30,10 +30,36 @@ import OrganProfile from '../screens/OrganProfile';
 
 const Stack = createStackNavigator();
 
+const prefixes = typeof window !== 'undefined' ? [window.location.origin] : [];
+
+const linking = {
+  prefixes,
+  config: {
+    screens: {
+      Home: '',
+      Login: 'login',
+      Signup: 'signup',
+      ForgotPassword: 'forgot-password',
+      Dashboard: 'dashboard',
+      Profile: 'profile',
+      Requests: 'requests',
+      CompanyDashboard: 'company',
+      CProfile: 'company-profile',
+      Employees: 'employees',
+      Tenders: 'tenders',
+      OrganofStateDashboard: 'organ',
+      PostTenders: 'post-tenders',
+      PostTenderHistory: 'post-tender-history',
+      OrganProfile: 'organ-profile',
+      History: 'history',
+    },
+  },
+};
+
 export default function AppNavigator() {
   
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
         {/* Auth */}
         <Stack.Screen name="Home" component={HomePageScreen} />

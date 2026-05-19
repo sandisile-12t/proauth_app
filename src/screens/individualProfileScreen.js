@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ScrollView,
   View,
   Text,
   StyleSheet,
@@ -158,7 +159,7 @@ const handleUpload = async (type) => {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <ScreenHeader title="My Profile" navigation={navigation} />
       {/* Header row with icons */}
       <View style={styles.headerRow}>
@@ -272,7 +273,7 @@ const handleUpload = async (type) => {
       ) : (
         <Text style={styles.label}>No profile data found</Text>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
