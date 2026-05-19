@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getAuth, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -143,7 +143,7 @@ export default function IndividualDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  homeContainer: { flex: 1, backgroundColor: colors.background },
+  homeContainer: { flex: 1, backgroundColor: colors.background, height: Platform.select({ web: '100vh', default: 'auto' }) },
   homeContent: { paddingBottom: 30 },
   loadingContainer: { justifyContent: 'center', alignItems: 'center' },
   heroHeader: { paddingHorizontal: 20, paddingTop: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
