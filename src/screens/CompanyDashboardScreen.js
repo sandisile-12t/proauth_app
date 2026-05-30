@@ -1,13 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 import { getAuth, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import ScreenHeader from '../components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function CompanyDashboardScreen({ navigation }) {
   const auth = getAuth();
   const loggedInCompanyId = auth.currentUser?.uid;
+  const [companyName, setCompanyName] = useState('Company');
+
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+      try {
+        const docRef = doc(db, 'company_users', loggedInCompanyId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setCompanyName(docSnap.data().companyId || 'Company');
+        }
+      } catch (error) {
+        console.error('Error fetching company name:', error);
+      }
+    };
+
+    if (loggedInCompanyId) {
+      fetchCompanyName();
+    }
+  }, [loggedInCompanyId]);
 
   const handleLogout = async () => {
     try {
@@ -40,7 +61,7 @@ export default function CompanyDashboardScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.welcome}>Welcome, Company</Text>
+      <Text style={styles.welcome}>Welcome, {companyName}</Text>
 
       <View style={styles.grid}>
         <Card
