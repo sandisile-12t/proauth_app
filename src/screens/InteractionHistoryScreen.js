@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/theme';
 import { collection, query, where, onSnapshot, getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import ScreenHeader from '../components/ScreenHeader';
 
 export default function InteractionHistoryScreen({ navigation }) {
@@ -47,39 +49,68 @@ export default function InteractionHistoryScreen({ navigation }) {
     return Object.values(groups);
   }, [decisions, individualDetails]);
 
-  const handleShareGroup = async (group) => {
-    const lines = [
-      `Company: ${group.companyName}`,
-      `Tender: ${group.tenderNumber}`,
-      `Description: ${group.tenderDescription}`,
-      `Closing Date: ${group.tenderClosingDate}`,
-      '',
-      'Requested Professionals:',
-      ...group.personnel.flatMap((person, index) => {
-        const individual = person.individual;
-        return [
-          `#${index + 1}`,
-          `Name: ${individual ? `${individual.firstName} ${individual.lastName}` : 'N/A'}`,
-          `Profession: ${individual?.profession || 'N/A'}`,
-          `Email: ${individual?.email || 'N/A'}`,
-          `Decision: ${person.decision}`,
-          `Date: ${person.createdAt?.seconds
-            ? new Date(person.createdAt.seconds * 1000).toLocaleString()
-            : person.createdAt
-              ? new Date(person.createdAt).toLocaleString()
-              : 'N/A'}`,
-          '',
-        ];
-      }),
-    ];
+  const PDF_DOWNLOAD_URL = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+
+  const handleDownloadGroup = async (group) => {
+    const html = `
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+            h1 { color: #0a4a8d; margin-bottom: 12px; }
+            h2 { color: #333; margin-top: 24px; margin-bottom: 8px; }
+            .section { margin-bottom: 18px; }
+            .row { margin: 4px 0; }
+            .label { font-weight: 700; }
+            .person { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+          </style>
+        </head>
+        <body>
+          <h1>Tender Interaction</h1>
+          <div class="section">
+            <div class="row"><span class="label">Company:</span> ${group.companyName || 'N/A'}</div>
+            <div class="row"><span class="label">Tender:</span> ${group.tenderNumber || 'N/A'}</div>
+            <div class="row"><span class="label">Description:</span> ${group.tenderDescription || 'N/A'}</div>
+            <div class="row"><span class="label">Closing Date:</span> ${group.tenderClosingDate || 'N/A'}</div>
+          </div>
+          <h2>Requested Professionals</h2>
+          ${group.personnel.map((person, index) => {
+            const individual = person.individual || {};
+            const createdAt = person.createdAt?.seconds
+              ? new Date(person.createdAt.seconds * 1000).toLocaleString()
+              : person.createdAt
+                ? new Date(person.createdAt).toLocaleString()
+                : 'N/A';
+            return `
+              <div class="person">
+                <div class="row"><span class="label">#${index + 1}</span></div>
+                <div class="row"><span class="label">Name:</span> ${individual.firstName ? `${individual.firstName} ${individual.lastName || ''}`.trim() : 'N/A'}</div>
+                <div class="row"><span class="label">Profession:</span> ${individual.profession || 'N/A'}</div>
+                <div class="row"><span class="label">Email:</span> ${individual.email || 'N/A'}</div>
+                <div class="row"><span class="label">Decision:</span> ${person.decision || 'N/A'}</div>
+                <div class="row"><span class="label">Date:</span> ${createdAt}</div>
+              </div>
+            `;
+          }).join('')}
+        </body>
+      </html>
+    `;
 
     try {
-      await Share.share({
-        title: `Tender ${group.tenderNumber}`,
-        message: lines.join('\n'),
+      const { uri } = await Print.printToFileAsync({ html });
+      const available = await Sharing.isAvailableAsync();
+      if (!available) {
+        Alert.alert('Download unavailable', 'This device cannot save or share the generated PDF.');
+        return;
+      }
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Download interaction PDF',
       });
     } catch (error) {
-      console.error('Share failed:', error);
+      console.error('Download failed:', error);
+      Alert.alert('Download failed', 'Unable to generate or save the PDF file.');
     }
   };
 
@@ -284,8 +315,8 @@ export default function InteractionHistoryScreen({ navigation }) {
                 <View style={styles.actionRow}>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.iconButton]}
-                    onPress={() => handleShareGroup(item)}
-                    accessibilityLabel="Download card"
+                    onPress={() => handleDownloadGroup(item)}
+                    accessibilityLabel="Download PDF"
                   >
                     <Ionicons name="download-outline" size={22} color="#fff" />
                   </TouchableOpacity>

@@ -18,7 +18,8 @@ export default function CompanyDashboardScreen({ navigation }) {
         const docRef = doc(db, 'company_users', loggedInCompanyId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          setCompanyName(docSnap.data().companyId || 'Company');
+          const data = docSnap.data();
+          setCompanyName(data.companyName || data.companyId || data.email || 'Company');
         }
       } catch (error) {
         console.error('Error fetching company name:', error);
