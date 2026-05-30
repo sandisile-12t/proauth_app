@@ -19,7 +19,11 @@
       },
       "package": "com.proauth.app"
     },
-    "web": {
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "690ff20b-f7f7-4d10-915b-a2238da45bb9"
+      }
     }
   }
 }
