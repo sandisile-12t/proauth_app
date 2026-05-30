@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
     marginRight: 10, borderRadius: 4,
   },
   checkboxSelected: { backgroundColor: colors.accent },
-  name: { fontSize: 16, color: colors.text },
-  profession: { fontSize: 14, color: colors.textSecondary },
+  name: { fontSize: 16, color: '#fff' },
+  profession: { fontSize: 14, color: '#fff' },
   footer: { marginTop: 20, fontSize: 16, color: colors.textSecondary },
   submitButton: {
     backgroundColor: colors.accent,
