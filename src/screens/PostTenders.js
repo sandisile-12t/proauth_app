@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../theme/theme';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
 import ScreenHeader from '../components/ScreenHeader';
 
-export default function PostTenderScreen({ navigation }) {
+export default function PostTenderScreen({ navigation, route }) {
+  const { tender } = route.params || {};
+  const editing = Boolean(tender?.id);
   const [tenderNumber, setTenderNumber] = useState('');
   const [description, setDescription] = useState('');
   const [closingDate, setClosingDate] = useState(new Date());
@@ -25,6 +27,15 @@ export default function PostTenderScreen({ navigation }) {
 
   const [selectedEngineers, setSelectedEngineers] = useState([]);
 
+  useEffect(() => {
+    if (editing && tender) {
+      setTenderNumber(tender.tenderNumber || '');
+      setDescription(tender.description || '');
+      setClosingDate(tender.closingDate ? new Date(tender.closingDate) : new Date());
+      setSelectedEngineers(tender.keyPersonnel || []);
+    }
+  }, [editing, tender]);
+
   const toggleEngineer = (name) => {
     if (selectedEngineers.includes(name)) {
       setSelectedEngineers(selectedEngineers.filter(e => e !== name));
@@ -41,7 +52,19 @@ export default function PostTenderScreen({ navigation }) {
         return;
       }
 
-      // ✅ Add tender and capture Firestore doc ID
+      if (editing && tender?.id) {
+        const tenderRef = doc(db, 'tenders', tender.id);
+        await updateDoc(tenderRef, {
+          tenderNumber,
+          description,
+          closingDate: closingDate.toISOString(),
+          keyPersonnel: selectedEngineers,
+        });
+        alert('Tender updated successfully!');
+        navigation.goBack();
+        return;
+      }
+
       const docRef = await addDoc(collection(db, 'tenders'), {
         tenderNumber,
         description,
@@ -53,10 +76,9 @@ export default function PostTenderScreen({ navigation }) {
 
       alert('Tender posted successfully!');
 
-      // ✅ Pass tender with Firestore ID forward
       navigation.navigate('Tenders', {
         tender: {
-          id: docRef.id,          // Firestore doc ID
+          id: docRef.id,
           tenderNumber,
           description,
           closingDate: closingDate.toISOString(),
@@ -72,8 +94,8 @@ export default function PostTenderScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Post Tender" navigation={navigation} />
-      <Text style={styles.header}>Post a Tender</Text>
+      <ScreenHeader title={editing ? 'Edit Tender' : 'Post Tender'} navigation={navigation} />
+      <Text style={styles.header}>{editing ? 'Edit Tender' : 'Post a Tender'}</Text>
 
       <TextInput
         style={styles.input}
@@ -123,7 +145,7 @@ export default function PostTenderScreen({ navigation }) {
         )}
       />
 
-      <Button title="Post Tender" color={colors.accent} onPress={handlePostTender} />
+      <Button title={editing ? 'Save Changes' : 'Post Tender'} color={colors.accent} onPress={handlePostTender} />
     </View>
   );
 }
