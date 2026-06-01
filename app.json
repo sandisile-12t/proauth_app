@@ -6,6 +6,9 @@
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+     "updates": {
+      "enabled": false
+    },
     "splash": {
       "backgroundColor": "#ffffff"
     },

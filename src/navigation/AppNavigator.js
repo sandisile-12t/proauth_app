@@ -29,11 +29,8 @@ import PostTenderHistoryScreen from '../screens/PostTenderHistoryScreen';
 import OrganProfile from '../screens/OrganProfile';
 
 const Stack = createStackNavigator();
-
-const prefixes = typeof window !== 'undefined' ? [window.location.origin] : [];
-
 const linking = {
-  prefixes,
+  prefixes: [],
   config: {
     screens: {
       Home: '',
