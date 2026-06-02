@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/theme';
 import { collection, query, where, onSnapshot, getDoc, doc, deleteDoc } from 'firebase/firestore';
@@ -7,6 +7,7 @@ import { db } from '../services/firebase';
 import { getAuth } from 'firebase/auth';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import ScreenHeader from '../components/ScreenHeader';
 
 export default function InteractionHistoryScreen({ navigation }) {
@@ -23,15 +24,19 @@ export default function InteractionHistoryScreen({ navigation }) {
     const groups = {};
 
     decisions.forEach((decision) => {
-      const groupKey = decision.tenderId
-        ? `${decision.companyId || 'unknown'}_${decision.tenderId}`
-        : `${decision.companyId || 'unknown'}_${decision.tenderNumber || decision.id}`;
+      const companyId = (decision.companyId || '').toString();
+      const companyName = (decision.companyName || '').toString().trim();
+      const tenderId = (decision.tenderId || '').toString();
+      const tenderNumber = (decision.tenderNumber || '').toString().trim();
+      const groupKey = `${companyId || companyName}::${tenderId || tenderNumber}`;
 
       if (!groups[groupKey]) {
         groups[groupKey] = {
           id: groupKey,
-          companyName: decision.companyName || 'N/A',
-          tenderNumber: decision.tenderNumber || 'N/A',
+          companyId: companyId || null,
+          companyName: companyName || decision.companyName || 'N/A',
+          tenderId: tenderId || null,
+          tenderNumber: tenderNumber || decision.tenderNumber || 'N/A',
           tenderDescription: decision.tenderDescription || 'No description',
           tenderClosingDate: decision.tenderClosingDate || 'N/A',
           personnel: [],
@@ -60,19 +65,17 @@ export default function InteractionHistoryScreen({ navigation }) {
             body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
             h1 { color: #0a4a8d; margin-bottom: 12px; }
             h2 { color: #333; margin-top: 24px; margin-bottom: 8px; }
-            .section { margin-bottom: 18px; }
-            .row { margin: 4px 0; }
-            .label { font-weight: 700; }
             .person { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+            .label { font-weight: 700; }
           </style>
         </head>
         <body>
           <h1>Tender Interaction</h1>
-          <div class="section">
-            <div class="row"><span class="label">Company:</span> ${group.companyName || 'N/A'}</div>
-            <div class="row"><span class="label">Tender:</span> ${group.tenderNumber || 'N/A'}</div>
-            <div class="row"><span class="label">Description:</span> ${group.tenderDescription || 'N/A'}</div>
-            <div class="row"><span class="label">Closing Date:</span> ${group.tenderClosingDate || 'N/A'}</div>
+          <div>
+            <div><span class="label">Company:</span> ${group.companyName || 'N/A'}</div>
+            <div><span class="label">Tender:</span> ${group.tenderNumber || 'N/A'}</div>
+            <div><span class="label">Description:</span> ${group.tenderDescription || 'N/A'}</div>
+            <div><span class="label">Closing Date:</span> ${group.tenderClosingDate || 'N/A'}</div>
           </div>
           <h2>Requested Professionals</h2>
           ${group.personnel.map((person, index) => {
@@ -84,12 +87,12 @@ export default function InteractionHistoryScreen({ navigation }) {
                 : 'N/A';
             return `
               <div class="person">
-                <div class="row"><span class="label">#${index + 1}</span></div>
-                <div class="row"><span class="label">Name:</span> ${individual.firstName ? `${individual.firstName} ${individual.lastName || ''}`.trim() : 'N/A'}</div>
-                <div class="row"><span class="label">Profession:</span> ${individual.profession || 'N/A'}</div>
-                <div class="row"><span class="label">Email:</span> ${individual.email || 'N/A'}</div>
-                <div class="row"><span class="label">Decision:</span> ${person.decision || 'N/A'}</div>
-                <div class="row"><span class="label">Date:</span> ${createdAt}</div>
+                <div><span class="label">#${index + 1}</span></div>
+                <div><span class="label">Name:</span> ${individual.firstName ? `${individual.firstName} ${individual.lastName || ''}`.trim() : 'N/A'}</div>
+                <div><span class="label">Profession:</span> ${individual.profession || 'N/A'}</div>
+                <div><span class="label">Email:</span> ${individual.email || 'N/A'}</div>
+                <div><span class="label">Decision:</span> ${person.decision || 'N/A'}</div>
+                <div><span class="label">Date:</span> ${createdAt}</div>
               </div>
             `;
           }).join('')}
@@ -98,16 +101,50 @@ export default function InteractionHistoryScreen({ navigation }) {
     `;
 
     try {
-      const { uri } = await Print.printToFileAsync({ html });
-      const available = await Sharing.isAvailableAsync();
-      if (!available) {
-        Alert.alert('Download unavailable', 'This device cannot save or share the generated PDF.');
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+          throw new Error('Unable to open print window');
+        }
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
         return;
       }
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Download interaction PDF',
+
+      // Generate PDF from HTML
+      const { uri: tempUri } = await Print.printToFileAsync({ html });
+
+      // Create filename with company and tender info
+      const filename = `Tender_${group.tenderNumber || 'interaction'}_${group.companyName || 'company'}_${Date.now()}.pdf`.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+      // Save to app's document directory
+      const documentsDir = FileSystem.documentDirectory;
+      const filePath = `${documentsDir}${filename}`;
+
+      // Copy PDF to permanent location
+      await FileSystem.copyAsync({
+        from: tempUri,
+        to: filePath,
       });
+
+      // Show confirmation and option to share
+      Alert.alert('Download Complete', `PDF saved as: ${filename}`, [
+        {
+          text: 'OK',
+          onPress: () => {},
+        },
+        {
+          text: 'Share File',
+          onPress: async () => {
+            await Sharing.shareAsync(filePath, {
+              mimeType: 'application/pdf',
+              dialogTitle: 'Share interaction PDF',
+            });
+          },
+        },
+      ]);
     } catch (error) {
       console.error('Download failed:', error);
       Alert.alert('Download failed', 'Unable to generate or save the PDF file.');
@@ -126,14 +163,10 @@ export default function InteractionHistoryScreen({ navigation }) {
           onPress: async () => {
             try {
               await Promise.all(
-                group.personnel.map((person) =>
-                  deleteDoc(doc(db, 'approval_decisions', person.id))
-                )
+                group.personnel.map((person) => deleteDoc(doc(db, 'approval_decisions', person.id)))
               );
               setDecisions((prevDecisions) =>
-                prevDecisions.filter(
-                  (decision) => !group.personnel.some((person) => person.id === decision.id)
-                )
+                prevDecisions.filter((d) => !group.personnel.some((p) => p.id === d.id))
               );
               setStatusMessage('Card deleted successfully.');
             } catch (error) {
@@ -300,46 +333,49 @@ export default function InteractionHistoryScreen({ navigation }) {
           )}
         </View>
       ) : (
-        <FlatList
+        <ScrollView
           style={styles.list}
-          contentContainerStyle={styles.listContent}
-          data={groupedDecisions}
-          keyExtractor={(item) => item.id}
-          nestedScrollEnabled={true}
+          contentContainerStyle={[styles.listContent, styles.listContentContainer]}
           keyboardShouldPersistTaps="handled"
-          ListFooterComponent={<View style={styles.listFooter} />}
-          renderItem={({ item }) => (
-              <View style={styles.card}>
-                <Text style={styles.company}>Company: {item.companyName || 'N/A'}</Text>
-                <Text style={styles.detail}>Tender: {item.tenderNumber || 'N/A'}</Text>
-                <Text style={styles.detail}>Description: {item.tenderDescription || 'No description'}</Text>
-                <Text style={styles.detail}>Closing Date: {item.tenderClosingDate || 'N/A'}</Text>
-                
-                <View style={styles.actionRow}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.iconButton]}
-                    onPress={() => handleDownloadGroup(item)}
-                    accessibilityLabel="Download PDF"
-                  >
-                    <Ionicons name="download-outline" size={22} color="#fff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.iconButton, styles.deleteButton]}
-                    onPress={() => handleDeleteGroup(item)}
-                    accessibilityLabel="Delete card"
-                  >
-                    <Ionicons name="trash-outline" size={22} color="#fff" />
-                  </TouchableOpacity>
-                </View>
+          showsVerticalScrollIndicator={true}
+        >
+          {groupedDecisions.map((item) => (
+            <View key={item.id} style={styles.card}>
+              <Text style={styles.company}>Company: {item.companyName || 'N/A'}</Text>
+              <Text style={styles.detail}>Tender: {item.tenderNumber || 'N/A'}</Text>
+              <Text style={styles.detail}>Description: {item.tenderDescription || 'No description'}</Text>
+              <Text style={styles.detail}>Closing Date: {item.tenderClosingDate || 'N/A'}</Text>
 
-                <View style={styles.personnelSection}>
-                  <Text style={styles.personnelTitle}>Requested Professionals</Text>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.iconButton]}
+                  onPress={() => handleDownloadGroup(item)}
+                  accessibilityLabel="Download PDF"
+                >
+                  <Ionicons name="download-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.iconButton, styles.deleteButton]}
+                  onPress={() => handleDeleteGroup(item)}
+                  accessibilityLabel="Delete card"
+                >
+                  <Ionicons name="trash-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.personnelSection}>
+                <Text style={styles.personnelTitle}>Requested Professionals</Text>
                 {item.personnel.map((person) => {
                   const individual = person.individual;
+                  const createdAt = person.createdAt?.seconds
+                    ? new Date(person.createdAt.seconds * 1000).toLocaleString()
+                    : person.createdAt
+                      ? new Date(person.createdAt).toLocaleString()
+                      : 'N/A';
                   return (
                     <View key={person.id} style={styles.personRow}>
                       <Text style={styles.personDetail}>
-                        Name: {individual ? `${individual.firstName} ${individual.lastName}` : 'N/A'}
+                        Name: {individual ? `${individual.firstName} ${individual.lastName || ''}`.trim() : 'N/A'}
                       </Text>
                       <Text style={styles.personDetail}>
                         Profession: {individual?.profession || 'N/A'}
@@ -348,13 +384,11 @@ export default function InteractionHistoryScreen({ navigation }) {
                         Email: {individual?.email || 'N/A'}
                       </Text>
                       <Text style={[styles.personDetail, styles.personStatus]}>
-                        Decision: {person.decision}
+                        Decision: {person.decision || 'N/A'}
                       </Text>
                       {person.createdAt && (
                         <Text style={styles.personDetail}>
-                          Date: {person.createdAt?.seconds
-                            ? new Date(person.createdAt.seconds * 1000).toLocaleString()
-                            : new Date(person.createdAt).toLocaleString()}
+                          Date: {createdAt}
                         </Text>
                       )}
                     </View>
@@ -362,15 +396,16 @@ export default function InteractionHistoryScreen({ navigation }) {
                 })}
               </View>
             </View>
-          )}
-        />
+          ))}
+          <View style={styles.listFooter} />
+        </ScrollView>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primary, padding: 20 },
+  container: { flex: 1, backgroundColor: colors.primary, padding: 20, height: Platform.select({ web: '100vh', default: 'auto' }) },
   title: { fontSize: 22, fontWeight: 'bold', color: colors.accent, marginBottom: 20, textAlign: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 50 },
   empty: { color: '#fff', fontSize: 16, textAlign: 'center', marginTop: 20 },
@@ -432,9 +467,13 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+    width: '100%',
   },
   listContent: {
     paddingBottom: 20,
+  },
+  listContentContainer: {
+    flexGrow: 1,
   },
   listFooter: {
     height: 40,
