@@ -305,6 +305,9 @@ export default function InteractionHistoryScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           data={groupedDecisions}
           keyExtractor={(item) => item.id}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
+          ListFooterComponent={<View style={styles.listFooter} />}
           renderItem={({ item }) => (
               <View style={styles.card}>
                 <Text style={styles.company}>Company: {item.companyName || 'N/A'}</Text>
@@ -432,5 +435,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 20,
+  },
+  listFooter: {
+    height: 40,
   },
 });
