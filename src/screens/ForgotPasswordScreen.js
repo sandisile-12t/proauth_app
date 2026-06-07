@@ -1,15 +1,37 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
 import { colors } from '../theme/theme';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 export default function ForgotPasswordScreen({ route }) {
   const initialRole = route?.params?.role || 'Individual';
   const [role, setRole] = useState(initialRole);
   const [email, setEmail] = useState('');
 
-  const handleReset = () => {
-    // TODO: send reset request to backend based on role
-    alert(`Password reset link sent to ${email} for ${role}`);
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const handleReset = async () => {
+    if (!email.trim()) {
+      Alert.alert('Email required', 'Please enter your email address.');
+      return;
+    }
+
+    if (!isValidEmail(email.trim())) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      Alert.alert(
+        'Reset Email Sent',
+        `A password reset email has been sent to ${email.trim()}. Please check your inbox.`
+      );
+    } catch (error) {
+      console.error('Password reset error:', error);
+      Alert.alert('Reset failed', error.message || 'Unable to send password reset email.');
+    }
   };
 
   return (
