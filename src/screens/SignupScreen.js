@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { colors } from '../theme/theme';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 
 export default function UnifiedSignupScreen({ route, navigation }) {
-  const { role } = route.params;
+  const { role, edit = false, profileData = {}, userId: routeUserId, companyId: routeCompanyId } = route.params || {};
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [profession, setProfession] = useState('');
@@ -23,7 +23,9 @@ export default function UnifiedSignupScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
 
   const [companies, setCompanies] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState('');
   const auth = getAuth();
+  const isEditMode = Boolean(edit);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -35,11 +37,26 @@ export default function UnifiedSignupScreen({ route, navigation }) {
         }));
         setCompanies(companyList);
       } catch (error) {
-        console.error("Error fetching companies:", error);
+        console.error('Error fetching companies:', error);
       }
     };
     fetchCompanies();
   }, []);
+
+  useEffect(() => {
+    if (!isEditMode) return;
+
+    setFirstName(profileData.firstName || '');
+    setLastName(profileData.lastName || '');
+    setProfession(profileData.profession || '');
+    setSelectedCompanyId(profileData.companyId || '');
+    setCompanyName(profileData.companyName || '');
+    setCompanyReg(profileData.companyReg || '');
+    setOrganName(profileData.organName || '');
+    setDepartment(profileData.department || '');
+    setEmail(profileData.email || auth.currentUser?.email || '');
+    setCurrentUserId(routeUserId || routeCompanyId || auth.currentUser?.uid || '');
+  }, [isEditMode, profileData, routeUserId, routeCompanyId, auth.currentUser]);
 
   const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
@@ -52,13 +69,15 @@ export default function UnifiedSignupScreen({ route, navigation }) {
       setError('Please enter a valid email address.');
       return false;
     }
-    if (!password) {
-      setError('Password is required.');
-      return false;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return false;
+    if (!isEditMode) {
+      if (!password) {
+        setError('Password is required.');
+        return false;
+      }
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters.');
+        return false;
+      }
     }
 
     if (role === 'Individual') {
@@ -112,41 +131,91 @@ export default function UnifiedSignupScreen({ route, navigation }) {
     }
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      const user = userCredential.user;
-
-      let targetCollection = 'users';
-      if (role === 'Company') targetCollection = 'company_users';
-      else if (role === 'Organ') targetCollection = 'organ';
-
-      let companyData = {};
-      if (role === 'Individual' && selectedCompanyId) {
-        // ✅ Fetch selected company profile
-        const companyDoc = await getDoc(doc(db, 'company_users', selectedCompanyId));
-        if (companyDoc.exists()) {
-          companyData = companyDoc.data();
+      if (isEditMode) {
+        const targetCollection = role === 'Company' ? 'company_users' : role === 'Organ' ? 'organ' : 'users';
+        const docId = currentUserId || auth.currentUser?.uid;
+        if (!docId) {
+          throw new Error('Missing user ID for update.');
         }
+
+        let companyData = {};
+        if (role === 'Individual' && selectedCompanyId) {
+          const companyDoc = await getDoc(doc(db, 'company_users', selectedCompanyId));
+          if (companyDoc.exists()) {
+            companyData = companyDoc.data();
+          }
+        }
+
+        const updateData = {
+          role,
+          email: email.trim(),
+        };
+
+        if (role === 'Individual') {
+          updateData.firstName = firstName.trim();
+          updateData.lastName = lastName.trim();
+          updateData.profession = profession;
+          updateData.companyId = selectedCompanyId || null;
+          updateData.companyName = companyData.companyName || '';
+          updateData.companyReg = companyData.companyReg || '';
+        }
+
+        if (role === 'Company') {
+          updateData.companyName = companyName.trim();
+          updateData.companyReg = companyReg.trim();
+        }
+
+        if (role === 'Organ') {
+          updateData.organName = organName.trim();
+          updateData.department = department.trim();
+        }
+
+        await updateDoc(doc(db, targetCollection, docId), updateData);
+        alert('Profile updated successfully.');
+
+        if (role === 'Individual') {
+          navigation.navigate('Profile');
+        } else if (role === 'Company') {
+          navigation.navigate('CProfile', { companyId: docId });
+        } else if (role === 'Organ') {
+          navigation.navigate('OrganProfile');
+        }
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        const user = userCredential.user;
+
+        let targetCollection = 'users';
+        if (role === 'Company') targetCollection = 'company_users';
+        else if (role === 'Organ') targetCollection = 'organ';
+
+        let companyData = {};
+        if (role === 'Individual' && selectedCompanyId) {
+          const companyDoc = await getDoc(doc(db, 'company_users', selectedCompanyId));
+          if (companyDoc.exists()) {
+            companyData = companyDoc.data();
+          }
+        }
+
+        await setDoc(doc(db, targetCollection, user.uid), {
+          uid: user.uid,
+          role,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          profession,
+          companyId: selectedCompanyId || null,
+          companyName: role === 'Individual' ? (companyData.companyName || '') : companyName.trim(),
+          companyReg: role === 'Individual' ? (companyData.companyReg || '') : companyReg.trim(),
+          organName: organName.trim(),
+          department: department.trim(),
+          email: email.trim(),
+          createdAt: new Date(),
+        });
+
+        alert('Signup successful!');
+        navigation.navigate('Login', { role });
       }
-
-      await setDoc(doc(db, targetCollection, user.uid), {
-        uid: user.uid,
-        role,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        profession,
-        companyId: selectedCompanyId || null,
-        companyName: role === 'Individual' ? (companyData.companyName || '') : companyName.trim(),
-        companyReg: role === 'Individual' ? (companyData.companyReg || '') : companyReg.trim(),
-        organName: organName.trim(),
-        department: department.trim(),
-        email: email.trim(),
-        createdAt: new Date(),
-      });
-
-      alert('Signup successful!');
-      navigation.navigate('Login', { role });
     } catch (error) {
-      console.error("Error signing up:", error);
+      console.error('Error signing up or updating profile:', error);
       setError(error.message || 'Signup failed.');
     } finally {
       setLoading(false);
@@ -155,7 +224,7 @@ export default function UnifiedSignupScreen({ route, navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Sign Up as {role}</Text>
+      <Text style={styles.title}>{isEditMode ? `Edit ${role} Profile` : `Sign Up as ${role}`}</Text>
 
       {role === 'Individual' && (
         <>
@@ -243,36 +312,47 @@ export default function UnifiedSignupScreen({ route, navigation }) {
       )}
 
       <TextInput
-        style={styles.input}
+        style={[styles.input, isEditMode && styles.disabledInput]}
         placeholder="Email"
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
+        editable={!isEditMode}
         onChangeText={(value) => {
-          setEmail(value);
+          if (!isEditMode) {
+            setEmail(value);
+          }
           if (error) setError('');
         }}
       />
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Password"
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={(value) => {
-            setPassword(value);
-            if (error) setError('');
-          }}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
-        </TouchableOpacity>
-      </View>
+      {!isEditMode && (
+        <View style={styles.passwordContainer}>
+          <TextInput
+            style={styles.passwordInput}
+            placeholder="Password"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={(value) => {
+              setPassword(value);
+              if (error) setError('');
+            }}
+          />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Text style={styles.eye}>{showPassword ? '🙈' : '👁️'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isEditMode && (
+        <Text style={styles.noteText}>
+          Editing profile: email cannot be changed here. To change login credentials, use account settings.
+        </Text>
+      )}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSignup} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Signing Up...' : 'Sign Up'}</Text>
+        <Text style={styles.buttonText}>{loading ? (isEditMode ? 'Saving...' : 'Signing Up...') : isEditMode ? 'Save Changes' : 'Sign Up'}</Text>
       </TouchableOpacity>
     </ScrollView>
   );

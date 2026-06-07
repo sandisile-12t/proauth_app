@@ -7,22 +7,17 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
-  TextInput,
 } from 'react-native';
 import { colors } from '../theme/theme';
-import { getAuth } from 'firebase/auth';
-import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getAuth, deleteUser, signOut } from 'firebase/auth';
+import { doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import * as DocumentPicker from 'expo-document-picker';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import ScreenHeader from '../components/ScreenHeader';
-
 
 export default function IndividualProfileScreen({ navigation }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const auth = getAuth();
 
   useEffect(() => {
@@ -49,74 +44,61 @@ export default function IndividualProfileScreen({ navigation }) {
     fetchUserData();
   }, []);
 
-  const handleSaveProfile = async () => {
-    try {
-      if (!userData) return;
-      const uid = auth.currentUser?.uid;
-      const ref = doc(db, userData.role, uid);
-
-      await updateDoc(ref, {
-        firstName: userData.firstName || '',
-        lastName: userData.lastName || '',
-        profession: userData.profession || '',
-        phone: userData.phone || '',
-        address: userData.address || '',
-        bio: userData.bio || '',
-      });
-
-      setEditing(false);
-      Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
-      Alert.alert('Error', 'Could not update profile');
-    }
+  const handleEditProfile = () => {
+    if (!userData) return;
+    const uid = auth.currentUser?.uid;
+    navigation.navigate('Signup', {
+      role: 'Individual',
+      edit: true,
+      profileData: userData,
+      userId: uid,
+    });
   };
 
-// Upload handler
-const handleUpload = async (type) => {
-  try {
-    const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
-    if (result.canceled) return;
+  const handleDeleteProfile = () => {
+    if (!userData) return;
 
-    const file = result.assets[0];
-    const uid = auth.currentUser?.uid;
-    const storage = getStorage();
-    const storageRef = ref(storage, `uploads/${uid}/${type}-${file.name}`);
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const uid = auth.currentUser?.uid;
+              if (!uid) {
+                throw new Error('No authenticated user found.');
+              }
 
-    // Upload file
-    const response = await fetch(file.uri);
-    const blob = await response.blob();
-    await uploadBytes(storageRef, blob);
+              await deleteDoc(doc(db, userData.role, uid));
 
-    // Get download URL
-    const url = await getDownloadURL(storageRef);
+              if (auth.currentUser) {
+                await deleteUser(auth.currentUser);
+              }
 
-    // Save metadata in Firestore
-    const refDoc = doc(db, userData.role, uid);
-    await updateDoc(refDoc, {
-      [`${type}Uploaded`]: true,
-      [`${type}Url`]: url,
-    });
-
-    Alert.alert('Success', `${type.toUpperCase()} uploaded successfully`);
-    setUserData({ ...userData, [`${type}Uploaded`]: true, [`${type}Url`]: url });
-  } catch (error) {
-    console.error('Upload error:', error);
-    Alert.alert('Error', `Could not upload ${type}`);
-  }
-};
-
-  const handleDeleteProfile = async () => {
-    try {
-      if (!userData) return;
-      const uid = auth.currentUser?.uid;
-      const ref = doc(db, userData.role, uid);
-
-      await deleteDoc(ref);
-      setUserData(null);
-      Alert.alert('Deleted', 'Profile deleted successfully');
-    } catch (error) {
-      Alert.alert('Error', 'Could not delete profile');
-    }
+              Alert.alert('Deleted', 'Account deleted successfully.');
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+              });
+            } catch (error) {
+              console.error('Delete profile error:', error);
+              try {
+                if (auth.currentUser) {
+                  await signOut(auth);
+                }
+              } catch (signOutError) {
+                console.error('Error signing out after failed delete:', signOutError);
+              }
+              Alert.alert('Error', 'Could not delete account. Please try again.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   // Simple progress calculation
@@ -165,7 +147,7 @@ const handleUpload = async (type) => {
       <View style={styles.headerRow}>
         <Text style={styles.title}>My Profile</Text>
         <View style={styles.iconRow}>
-          <TouchableOpacity onPress={() => setEditing(!editing)}>
+          <TouchableOpacity onPress={handleEditProfile}>
             <Icon name="edit" size={26} color={colors.accent} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDeleteProfile}>
@@ -187,88 +169,36 @@ const handleUpload = async (type) => {
 
       {userData ? (
         <>
-          {editing ? (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="First Name"
-                placeholderTextColor="#ccc"
-                value={userData.firstName}
-                onChangeText={text => setUserData({ ...userData, firstName: text })}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Last Name"
-                placeholderTextColor="#ccc"
-                value={userData.lastName}
-                onChangeText={text => setUserData({ ...userData, lastName: text })}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Profession"
-                placeholderTextColor="#ccc"
-                value={userData.profession}
-                onChangeText={text => setUserData({ ...userData, profession: text })}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number"
-                placeholderTextColor="#ccc"
-                value={userData.phone}
-                onChangeText={text => setUserData({ ...userData, phone: text })}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Address"
-                placeholderTextColor="#ccc"
-                value={userData.address}
-                onChangeText={text => setUserData({ ...userData, address: text })}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Short Bio"
-                placeholderTextColor="#ccc"
-                value={userData.bio}
-                onChangeText={text => setUserData({ ...userData, bio: text })}
-              />
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
-                <Text style={styles.saveText}>Save Changes</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={styles.label}>
-                Name: {userData.firstName || ''} {userData.lastName || ''}
-              </Text>
-              <Text style={styles.label}>
-                Email: {auth.currentUser?.email || 'Not specified'}
-              </Text>
-              <Text style={styles.label}>
-                Phone: {userData.phone || 'Not specified'}
-              </Text>
-              <Text style={styles.label}>
-                Address: {userData.address || 'Not specified'}
-              </Text>
-              <Text style={styles.label}>
-                Profession: {userData.profession || 'Not specified'}
-              </Text>
-              <Text style={styles.label}>
-                Bio: {userData.bio || 'Not specified'}
-              </Text>
+          <Text style={styles.label}>
+            Name: {userData.firstName || ''} {userData.lastName || ''}
+          </Text>
+          <Text style={styles.label}>
+            Email: {auth.currentUser?.email || 'Not specified'}
+          </Text>
+          <Text style={styles.label}>
+            Phone: {userData.phone || 'Not specified'}
+          </Text>
+          <Text style={styles.label}>
+            Address: {userData.address || 'Not specified'}
+          </Text>
+          <Text style={styles.label}>
+            Profession: {userData.profession || 'Not specified'}
+          </Text>
+          <Text style={styles.label}>
+            Bio: {userData.bio || 'Not specified'}
+          </Text>
 
-              {/* Uploads Section */}
-              <Text style={[styles.label, { marginTop: 15 }]}>Uploads</Text>
-              <Text style={styles.label}>
-                CV: {userData.cvUploaded ? '✅ Uploaded' : '❌ Missing'}
-              </Text>
-              <Text style={styles.label}>
-                Certificates: {userData.certUploaded ? '✅ Uploaded' : '❌ Missing'}
-              </Text>
-              <Text style={styles.label}>
-                ID Copy: {userData.idUploaded ? '✅ Uploaded' : '❌ Missing'}
-              </Text>
-            </>
-          )}
+          {/* Uploads Section */}
+          <Text style={[styles.label, { marginTop: 15 }]}>Uploads</Text>
+          <Text style={styles.label}>
+            CV: {userData.cvUploaded ? '✅ Uploaded' : '❌ Missing'}
+          </Text>
+          <Text style={styles.label}>
+            Certificates: {userData.certUploaded ? '✅ Uploaded' : '❌ Missing'}
+          </Text>
+          <Text style={styles.label}>
+            ID Copy: {userData.idUploaded ? '✅ Uploaded' : '❌ Missing'}
+          </Text>
         </>
       ) : (
         <Text style={styles.label}>No profile data found</Text>
