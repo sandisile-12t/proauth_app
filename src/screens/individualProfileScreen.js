@@ -101,7 +101,6 @@ export default function IndividualProfileScreen({ navigation }) {
     );
   };
 
-  // Simple progress calculation
   const calculateCompletion = () => {
     if (!userData) return 0;
     const fields = [
@@ -119,16 +118,23 @@ export default function IndividualProfileScreen({ navigation }) {
     return filled / fields.length;
   };
 
-  const ProgressBar = ({ progress }) => (
-    <View style={{ height: 12, backgroundColor: '#444', borderRadius: 6 }}>
-      <View
-        style={{
-          width: `${progress * 100}%`,
-          height: 12,
-          backgroundColor: colors.accent,
-          borderRadius: 6,
-        }}
+  const getInitials = () => {
+    if (!userData) return '?';
+    const first = userData.firstName?.[0] || '';
+    const last = userData.lastName?.[0] || '';
+    return (first + last).toUpperCase();
+  };
+
+  const StatusBadge = ({ uploaded, label }) => (
+    <View style={[styles.statusBadge, uploaded ? styles.statusSuccess : styles.statusPending]}>
+      <Icon
+        name={uploaded ? 'check-circle' : 'error-outline'}
+        size={16}
+        color={uploaded ? colors.success : colors.warning}
       />
+      <Text style={[styles.statusText, { color: uploaded ? colors.success : colors.warning }]}>
+        {uploaded ? 'Uploaded' : 'Missing'}
+      </Text>
     </View>
   );
 
@@ -140,93 +146,360 @@ export default function IndividualProfileScreen({ navigation }) {
     );
   }
 
+  const completion = calculateCompletion();
+
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
       <ScreenHeader title="My Profile" navigation={navigation} />
-      {/* Header row with icons */}
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>My Profile</Text>
-        <View style={styles.iconRow}>
-          <TouchableOpacity onPress={handleEditProfile}>
-            <Icon name="edit" size={26} color={colors.accent} />
+
+      {/* Header Card with Avatar */}
+      <View style={styles.headerCard}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials()}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.nameText}>
+          {userData?.firstName} {userData?.lastName}
+        </Text>
+        <Text style={styles.roleText}>{userData?.profession || 'Professional'}</Text>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={handleEditProfile}
+            activeOpacity={0.7}
+          >
+            <Icon name="edit" size={18} color={colors.surface} />
+            <Text style={styles.editBtnText}>Edit Profile</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDeleteProfile}>
-            <Icon name="delete" size={26} color="red" />
+          <TouchableOpacity
+            style={styles.deleteBtn}
+            onPress={handleDeleteProfile}
+            activeOpacity={0.7}
+          >
+            <Icon name="delete" size={18} color={colors.surface} />
+            <Text style={styles.deleteBtnText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Profile completion bar */}
-      {userData && (
-        <View style={styles.progressContainer}>
-          <Text style={styles.label}>Profile Completion</Text>
-          <ProgressBar progress={calculateCompletion()} />
-          <Text style={styles.label}>
-            {Math.round(calculateCompletion() * 100)}% complete
-          </Text>
+      {userData ? (
+        <>
+          {/* Profile Completion Card */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Profile Completion</Text>
+              <Text style={styles.completionPercent}>{Math.round(completion * 100)}%</Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${completion * 100}%` }]} />
+            </View>
+            <Text style={styles.progressText}>
+              {Math.round(completion * 100) === 100
+                ? '✓ Profile Complete!'
+                : `Complete your profile to stand out`}
+            </Text>
+          </View>
+
+          {/* Contact Information Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Contact Information</Text>
+            <View style={styles.infoRow}>
+              <Icon name="email" size={20} color={colors.accent} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={styles.infoValue}>{auth.currentUser?.email || 'Not specified'}</Text>
+              </View>
+            </View>
+            <View style={styles.infoRow}>
+              <Icon name="phone" size={20} color={colors.accent} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>{userData?.phone || 'Not specified'}</Text>
+              </View>
+            </View>
+            <View style={styles.infoRow}>
+              <Icon name="location-on" size={20} color={colors.accent} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Address</Text>
+                <Text style={styles.infoValue}>{userData?.address || 'Not specified'}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Professional Information Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Professional Information</Text>
+            <View style={styles.infoField}>
+              <Text style={styles.fieldLabel}>Profession</Text>
+              <Text style={styles.fieldValue}>{userData?.profession || 'Not specified'}</Text>
+            </View>
+            <View style={styles.infoField}>
+              <Text style={styles.fieldLabel}>Bio</Text>
+              <Text style={styles.fieldValue}>
+                {userData?.bio || 'No bio provided yet'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Documents Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Documents</Text>
+            <View style={styles.documentRow}>
+              <View style={styles.documentInfo}>
+                <Icon name="description" size={24} color={colors.accent} />
+                <Text style={styles.documentLabel}>Curriculum Vitae</Text>
+              </View>
+              <StatusBadge uploaded={userData?.cvUploaded} label="CV" />
+            </View>
+            <View style={styles.documentRow}>
+              <View style={styles.documentInfo}>
+                <Icon name="school" size={24} color={colors.accent} />
+                <Text style={styles.documentLabel}>Certificates</Text>
+              </View>
+              <StatusBadge uploaded={userData?.certUploaded} label="Cert" />
+            </View>
+            <View style={styles.documentRow}>
+              <View style={styles.documentInfo}>
+                <Icon name="card-membership" size={24} color={colors.accent} />
+                <Text style={styles.documentLabel}>ID Document</Text>
+              </View>
+              <StatusBadge uploaded={userData?.idUploaded} label="ID" />
+            </View>
+          </View>
+        </>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.noDataText}>No profile data found</Text>
         </View>
       )}
 
-      {userData ? (
-        <>
-          <Text style={styles.label}>
-            Name: {userData.firstName || ''} {userData.lastName || ''}
-          </Text>
-          <Text style={styles.label}>
-            Email: {auth.currentUser?.email || 'Not specified'}
-          </Text>
-          <Text style={styles.label}>
-            Phone: {userData.phone || 'Not specified'}
-          </Text>
-          <Text style={styles.label}>
-            Address: {userData.address || 'Not specified'}
-          </Text>
-          <Text style={styles.label}>
-            Profession: {userData.profession || 'Not specified'}
-          </Text>
-          <Text style={styles.label}>
-            Bio: {userData.bio || 'Not specified'}
-          </Text>
-
-          {/* Uploads Section */}
-          <Text style={[styles.label, { marginTop: 15 }]}>Uploads</Text>
-          <Text style={styles.label}>
-            CV: {userData.cvUploaded ? '✅ Uploaded' : '❌ Missing'}
-          </Text>
-          <Text style={styles.label}>
-            Certificates: {userData.certUploaded ? '✅ Uploaded' : '❌ Missing'}
-          </Text>
-          <Text style={styles.label}>
-            ID Copy: {userData.idUploaded ? '✅ Uploaded' : '❌ Missing'}
-          </Text>
-        </>
-      ) : (
-        <Text style={styles.label}>No profile data found</Text>
-      )}
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: colors.primary },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: 'bold', color: colors.accent },
-  iconRow: { flexDirection: 'row', gap: 15 },
-  label: { color: '#fff', marginTop: 10, fontSize: 16 },
-  progressContainer: { marginVertical: 15 },
-  input: {
-    backgroundColor: '#333',
-    color: '#fff',
-    padding: 10,
-    marginVertical: 8,
-    borderRadius: 6,
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: colors.background,
+    paddingBottom: 20,
   },
-  saveBtn: {
-    backgroundColor: colors.accent,
-    padding: 12,
-    borderRadius: 6,
-    marginTop: 10,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  saveText: { color: '#fff', fontWeight: 'bold' },
+  headerCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: colors.accent,
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.accent,
+  },
+  nameText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  roleText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 20,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  editBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  editBtnText: {
+    color: colors.surface,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  deleteBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.error,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  deleteBtnText: {
+    color: colors.surface,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  card: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  completionPercent: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.accent,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: colors.border,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+  },
+  progressText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  infoField: {
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  fieldValue: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  documentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  documentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  documentLabel: {
+    fontSize: 14,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 6,
+  },
+  statusSuccess: {
+    backgroundColor: colors.success + '15',
+  },
+  statusPending: {
+    backgroundColor: colors.warning + '15',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  noDataText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
 });
+
