@@ -40,7 +40,10 @@ export default function CompanyProfile({ route, navigation }) {
   }, [companyId]);
 
   const handleEditProfile = () => {
-    if (!company) return;
+    if (!company) {
+      Alert.alert('Loading', 'Please wait while your profile is loading...');
+      return;
+    }
     navigation.navigate('Signup', {
       role: 'Company',
       edit: true,
@@ -50,7 +53,12 @@ export default function CompanyProfile({ route, navigation }) {
   };
 
   const handleDeleteProfile = () => {
-    if (!company) return;
+    console.log('Delete company button pressed for:', companyId);
+    
+    if (!companyId) {
+      Alert.alert('Error', 'No company ID found.');
+      return;
+    }
 
     Alert.alert(
       'Delete Company Account',
@@ -62,10 +70,14 @@ export default function CompanyProfile({ route, navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteDoc(doc(db, 'company_users', company.id));
+              // Delete from Firestore
+              await deleteDoc(doc(db, 'company_users', companyId));
+              console.log('Deleted company from Firestore');
 
-              if (auth.currentUser?.uid === company.id) {
+              // Delete from Firebase Auth if same user
+              if (auth.currentUser?.uid === companyId) {
                 await deleteUser(auth.currentUser);
+                console.log('Deleted auth user');
               }
 
               Alert.alert('Deleted', 'Company account deleted successfully.');
@@ -135,17 +147,21 @@ export default function CompanyProfile({ route, navigation }) {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.editBtn}
+            style={[styles.editBtn, loading && styles.disabledBtn]}
             onPress={handleEditProfile}
             activeOpacity={0.7}
+            disabled={loading}
           >
             <Icon name="edit" size={18} color={colors.surface} />
             <Text style={styles.editBtnText}>Edit Profile</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.deleteBtn}
+            style={[styles.deleteBtn, loading && styles.disabledBtn]}
             onPress={handleDeleteProfile}
             activeOpacity={0.7}
+            useForeground={true}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            disabled={loading}
           >
             <Icon name="delete" size={18} color={colors.surface} />
             <Text style={styles.deleteBtnText}>Delete</Text>
@@ -182,19 +198,19 @@ export default function CompanyProfile({ route, navigation }) {
       {/* Organization Details Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Organization Details</Text>
-        {company.department && (
+        {company.department ? (
           <View style={styles.infoField}>
             <Text style={styles.fieldLabel}>Department</Text>
             <Text style={styles.fieldValue}>{company.department}</Text>
           </View>
-        )}
-        {company.organName && (
+        ) : null}
+        {company.organName ? (
           <View style={styles.infoField}>
             <Text style={styles.fieldLabel}>Organization</Text>
             <Text style={styles.fieldValue}>{company.organName}</Text>
           </View>
-        )}
-        {company.createdAt && company.createdAt.seconds && (
+        ) : null}
+        {company.createdAt && company.createdAt.seconds ? (
           <View style={styles.infoField}>
             <Text style={styles.fieldLabel}>Created Date</Text>
             <View style={styles.dateRow}>
@@ -208,7 +224,7 @@ export default function CompanyProfile({ route, navigation }) {
               </Text>
             </View>
           </View>
-        )}
+        ) : null}
       </View>
 
       {/* Status Card */}
@@ -250,10 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0, 31, 63, 0.1)',
     elevation: 5,
   },
   logoContainer: {
@@ -321,16 +334,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  disabledBtn: {
+    opacity: 0.5,
+  },
   card: {
     marginHorizontal: 16,
     marginBottom: 16,
     backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 1px 4px rgba(0, 31, 63, 0.1)',
     elevation: 2,
   },
   cardTitle: {
