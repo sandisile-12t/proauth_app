@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, TouchableOpacity, FlatList, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors } from '../theme/theme';
 import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
@@ -70,7 +70,7 @@ export default function PostTenderScreen({ navigation, route }) {
         description,
         closingDate: closingDate.toISOString(),
         keyPersonnel: selectedEngineers,
-        organId: user.uid,   // logged-in organ’s UID
+        organId: user.uid,
         createdAt: new Date(),
       });
 
@@ -110,21 +110,37 @@ export default function PostTenderScreen({ navigation, route }) {
         onChangeText={setDescription}
       />
 
-      <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-        <Text style={styles.dateText}>Closing Date: {closingDate.toDateString()}</Text>
-      </TouchableOpacity>
+      {/* Hybrid Date Picker */}
+      {Platform.OS === 'web' ? (
+        <View style={styles.dateButton}>
+          <Text style={styles.dateText}>Closing Date:</Text>
+          <input
+            type="date"
+            value={closingDate.toISOString().split("T")[0]}
+            min={new Date().toISOString().split("T")[0]}
+            onChange={(e) => setClosingDate(new Date(e.target.value))}
+            style={{ padding: 8, borderRadius: 6, border: '1px solid #ccc' }}
+          />
+        </View>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateText}>Closing Date: {closingDate.toDateString()}</Text>
+          </TouchableOpacity>
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={closingDate}
-          mode="date"
-          minimumDate={new Date()}
-          display="calendar"
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) setClosingDate(selectedDate);
-          }}
-        />
+          {showDatePicker && (
+            <DateTimePicker
+              value={closingDate}
+              mode="date"
+              minimumDate={new Date()}
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              onChange={(event, selectedDate) => {
+                if (Platform.OS === 'android') setShowDatePicker(false);
+                if (selectedDate) setClosingDate(selectedDate);
+              }}
+            />
+          )}
+        </>
       )}
 
       <Text style={styles.sectionTitle}>Key Personnel</Text>
@@ -155,7 +171,7 @@ const styles = StyleSheet.create({
   header: { fontSize: 22, fontWeight: 'bold', color: colors.accent, marginBottom: 20 },
   input: { backgroundColor: '#fff', padding: 12, borderRadius: 8, marginBottom: 12 },
   dateButton: { backgroundColor: '#fff', padding: 12, borderRadius: 8, marginBottom: 20 },
-  dateText: { color: colors.text, fontSize: 16 },
+  dateText: { color: colors.text, fontSize: 16, marginBottom: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.accent, marginBottom: 10 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   checkbox: { 
@@ -167,6 +183,5 @@ const styles = StyleSheet.create({
     borderRadius: 4 
   },
   checkboxSelected: { backgroundColor: colors.accent },
-  // 👇 changed to white
   checkboxLabel: { fontSize: 16, color: '#fff' },
 });

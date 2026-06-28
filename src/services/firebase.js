@@ -14,7 +14,8 @@ const firebaseConfig = {
   apiKey: "AIzaSyAk4i3fMMVHcyehmf1Ebq2geVH92Ze6Syg",
   authDomain: "proauth-a5eed.firebaseapp.com",
   projectId: "proauth-a5eed",
-  storageBucket: "proauth-a5eed.firebasestorage.app",
+  // storageBucket: "proauth-a5eed.firebasestorage.app",
+  storageBucket: "proauth-a5eed.appspot.com",
   messagingSenderId: "394929459576",
   appId: "1:394929459576:web:e62a92f84d6c18636c388d",
   measurementId: "G-47L1CS3FRF"
