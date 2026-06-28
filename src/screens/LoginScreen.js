@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ScrollView, View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors } from '../theme/theme';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 
 export default function LoginScreen({ route, navigation }) {
   const { role } = route.params;
@@ -14,9 +16,31 @@ export default function LoginScreen({ route, navigation }) {
       const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const user = userCredential.user;
 
-      if (role === 'Individual') navigation.navigate('Dashboard');
-      else if (role === 'Company') navigation.navigate('CompanyDashboard');
-      else if (role === 'Organ') navigation.navigate('OrganofStateDashboard');
+      // Determine which collection to check based on selected role
+      let targetCollection = 'users';
+      if (role === 'Company') targetCollection = 'company_users';
+      else if (role === 'Organ') targetCollection = 'organ';
+
+      // Fetch the user’s record from Firestore
+      const userDoc = await getDoc(doc(db, targetCollection, user.uid));
+
+      if (!userDoc.exists()) {
+        alert(`${role} account does not exist. Please log in with the correct role.`);
+        return;
+      }
+
+      const actualRole = userDoc.data().role;
+
+      if (actualRole !== role) {
+        alert(`You selected "${role}" but this account is registered as "${actualRole}".`);
+        return;
+      }
+
+      // Navigate based on actual role
+      if (actualRole === 'Individual') navigation.navigate('Dashboard');
+      else if (actualRole === 'Company') navigation.navigate('CompanyDashboard');
+      else if (actualRole === 'Organ') navigation.navigate('OrganofStateDashboard');
+
     } catch (error) {
       alert('Login failed: ' + error.message);
     }
