@@ -252,9 +252,28 @@ export default function InteractionHistoryScreen({ navigation }) {
       const q = query(collection(db, 'approval_decisions'), where('individualId', '==', user.uid));
       unsub = onSnapshot(q, handleSnapshot);
     } else if (normalizedRole === 'company') {
-      // Show decisions on tenders posted by this company (where companyId matches the user's UID)
-      const q = query(collection(db, 'approval_decisions'), where('companyId', '==', user.uid));
-      unsub = onSnapshot(q, handleSnapshot);
+  // Listen for all approval_decisions created by this company
+  const q = query(collection(db, 'approval_decisions'), where('companyId', '==', user.uid));
+  unsub = onSnapshot(q, (snapshot) => {
+    const decisionsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    setDecisions(decisionsData);
+    setStatusMessage(
+      decisionsData.length === 0
+        ? 'No interaction requests yet.'
+        : `${decisionsData.length} request(s) found.`
+    );
+
+    // Fetch individual details for each request
+    decisionsData.forEach(decision => {
+      if (decision.individualId) {
+        fetchIndividualDetails(decision.individualId);
+      }
+    });
+
+    setLoading(false);
+  });
+
     } else if (normalizedRole === 'organ' || normalizedRole === 'organofstate') {
       // Show all interactions/decisions on tenders posted by this organ
       const tendersQuery = query(collection(db, 'tenders'), where('organId', '==', user.uid));

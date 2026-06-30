@@ -23,6 +23,11 @@ export default function PostTenderScreen({ navigation, route }) {
     { id: '3', name: 'Electrical Engineer' },
     { id: '4', name: 'Mechanical Engineer' },
     { id: '5', name: 'Environmental Engineer' },
+    { id: '6', name: 'Geotechnical Engineer' },
+    { id: '7', name: 'Transportation Engineer' },
+    { id: '8', name: 'Quantity Suveyor' },
+    { id: '9', name: 'Environmental Engineer' },
+
   ];
 
   const [selectedEngineers, setSelectedEngineers] = useState([]);

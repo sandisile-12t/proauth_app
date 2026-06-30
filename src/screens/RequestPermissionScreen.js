@@ -13,10 +13,12 @@ export default function RequestPermissionScreen({ route, navigation }) {
   const [selected, setSelected] = useState([]);
   const auth = getAuth();
 
+  // helper to normalize strings
+  const normalize = (str) => str?.trim().toLowerCase();
+
   useEffect(() => {
     if (!auth.currentUser?.uid) return;
 
-    // 🔎 Query all users registered under the logged-in company
     const q = query(collection(db, 'users'), where('companyId', '==', auth.currentUser.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -26,7 +28,13 @@ export default function RequestPermissionScreen({ route, navigation }) {
     return () => unsubscribe();
   }, [auth.currentUser?.uid]);
 
-  const toggleSelect = (id) => {
+  const toggleSelect = (id, profession) => {
+    const required = (tender.keyPersonnel || []).map(normalize);
+    if (!required.includes(normalize(profession))) {
+      Alert.alert('Invalid Selection', 'This profession is not listed on the tender.');
+      return;
+    }
+
     if (selected.includes(id)) {
       setSelected(selected.filter(s => s !== id));
     } else {
@@ -49,7 +57,20 @@ export default function RequestPermissionScreen({ route, navigation }) {
 
       const selectedIndividuals = individuals.filter(ind => selected.includes(ind.id));
 
-      // ✅ Query company_users by uid field
+      // ✅ Validate professions against tender keyPersonnel
+      const required = (tender.keyPersonnel || []).map(normalize);
+      const invalid = selectedIndividuals.filter(ind =>
+        !required.includes(normalize(ind.profession))
+      );
+
+      if (invalid.length > 0) {
+        Alert.alert(
+          'Invalid Selection',
+          `The following individuals do not match tender requirements:\n${invalid.map(i => `${i.firstName} ${i.lastName}`).join(', ')}`
+        );
+        return;
+      }
+
       const q = query(collection(db, 'company_users'), where('uid', '==', user.uid));
       const snapshot = await getDocs(q);
       let companyData = {};
@@ -57,20 +78,20 @@ export default function RequestPermissionScreen({ route, navigation }) {
         companyData = snapshot.docs[0].data();
       }
 
-      await addDoc(collection(db, 'permission_requests'), {
-  tenderId: tender.id,
-  tenderNumber: tender.tenderNumber,
-  description: tender.description,
-  closingDate: tender.closingDate,
-  companyId: user.uid,
-  companyName: companyData.companyName || 'Unknown Company',
-  companyReg: companyData.companyReg || '',
-  individualIds: selectedIndividuals.map(ind => ind.uid), // must be UID
-  individualDetails: selectedIndividuals,
-  status: 'Pending',   // 👈 REQUIRED
-  createdAt: new Date(),
-});
-
+      for (const ind of selectedIndividuals) {
+        await addDoc(collection(db, 'approval_decisions'), {
+          tenderId: tender.id,
+          tenderNumber: tender.tenderNumber,
+          tenderDescription: tender.description,
+          tenderClosingDate: tender.closingDate,
+          companyId: user.uid,
+          companyName: companyData.companyName || 'Unknown Company',
+          companyReg: companyData.companyReg || '',
+          individualId: ind.uid,
+          decision: 'pending',
+          createdAt: new Date(),
+        });
+      }
 
       Alert.alert('Submitted', `Request sent to ${selectedIndividuals.length} individuals.`);
       setSelected([]);
@@ -103,18 +124,27 @@ export default function RequestPermissionScreen({ route, navigation }) {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => toggleSelect(item.id)}
-          >
-            <View style={[styles.checkbox, selected.includes(item.id) && styles.checkboxSelected]} />
-            <View>
-              <Text style={styles.name}>{item.firstName} {item.lastName}</Text>
-              <Text style={styles.profession}>{item.profession}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const required = (tender.keyPersonnel || []).map(normalize);
+          const isValid = required.includes(normalize(item.profession));
+          return (
+            <TouchableOpacity
+              style={[styles.row, !isValid && styles.disabledRow]}
+              onPress={() => toggleSelect(item.id, item.profession)}
+              disabled={!isValid}
+            >
+              <View style={[styles.checkbox, selected.includes(item.id) && styles.checkboxSelected]} />
+              <View>
+                <Text style={[styles.name, !isValid && styles.disabledText]}>
+                  {item.firstName} {item.lastName}
+                </Text>
+                <Text style={[styles.profession, !isValid && styles.disabledText]}>
+                  {item.profession}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
 
       <Text style={styles.footer}>Selected: {selected.length}</Text>
@@ -138,6 +168,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   row: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  disabledRow: { opacity: 0.5 },
   checkbox: {
     width: 20, height: 20, borderWidth: 2, borderColor: colors.accent,
     marginRight: 10, borderRadius: 4,
@@ -145,6 +176,7 @@ const styles = StyleSheet.create({
   checkboxSelected: { backgroundColor: colors.accent },
   name: { fontSize: 16, color: '#fff' },
   profession: { fontSize: 14, color: '#fff' },
+  disabledText: { color: '#aaa' },
   footer: { marginTop: 20, fontSize: 16, color: colors.textSecondary },
   submitButton: {
     backgroundColor: colors.accent,
